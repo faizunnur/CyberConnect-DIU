@@ -43,6 +43,7 @@ class AuthorizationMatrixIT extends AbstractIntegrationTest {
         ApiClient.Session anonymous = api.newSession();
         for (String path : new String[] {"/api/v1/auth/me", "/api/v1/verification/status", "/api/v1/me/affiliations",
                 "/api/v1/me/profile", "/api/v1/members", "/api/v1/connections", "/api/v1/blocks",
+                "/api/v1/feed", "/api/v1/bookmarks", "/api/v1/hashtags/trending", "/api/v1/moderation/reports",
                 "/api/v1/moderation/verifications", "/api/v1/admin/members", "/api/v1/admin/audit"}) {
             MvcResult result = api.get(path, anonymous);
             api.assertStatus(result, 401);
@@ -68,7 +69,8 @@ class AuthorizationMatrixIT extends AbstractIntegrationTest {
 
             for (String path : new String[] {"/api/v1/moderation/verifications", "/api/v1/admin/members",
                     "/api/v1/admin/settings", "/api/v1/admin/audit", "/api/v1/me/profile", "/api/v1/members",
-                    "/api/v1/connections", "/api/v1/connections/summary", "/api/v1/blocks", "/api/v1/skills"}) {
+                    "/api/v1/connections", "/api/v1/connections/summary", "/api/v1/blocks", "/api/v1/skills",
+                    "/api/v1/feed", "/api/v1/bookmarks", "/api/v1/hashtags/trending", "/api/v1/moderation/reports"}) {
                 MvcResult result = api.get(path, session);
                 api.assertStatus(result, 403);
                 assertThat(api.code(result)).as(entry.getKey() + " " + path).isEqualTo(entry.getValue());

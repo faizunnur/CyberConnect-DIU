@@ -40,6 +40,21 @@ instructions. Precedence: owner instructions → assessment decisions → propos
   admin area. Profile photos are re-encoded to a 512 px square JPEG (metadata dropped), malware-scanned and served
   only through the backend; student ids and documents never appear on profiles.
 
+## Community (business rules D-30..D-34, decided 30 Oct 2026)
+- D-30 Content is plain text: control and zero-width characters are stripped, blank lines collapsed, markup is kept
+  as inert text and never rendered as HTML. Posts ≤ 5000 and comments ≤ 2000 characters; up to 10 hashtags per post
+  are extracted from `#tags` (Unicode letters, marks, digits, underscore) and lower-cased.
+- D-31 Post visibility follows the author's choice per post (ALL_MEMBERS or CONNECTIONS_ONLY). Posts by suspended or
+  deactivated members and posts between members who block each other are hidden in both directions. Only original,
+  all-members posts can be reposted (one level, optional commentary); the original's counter follows the repost.
+- D-32 Authors edit and soft-delete their own content only. Moderators (MODERATION_ACTION) remove and restore;
+  the author sees the reason, everyone else sees nothing. A deleted or removed top-level comment stays as a placeholder
+  while it has replies. Counters are maintained server-side and never accepted from clients.
+- D-33 Reports: any member may report a post, comment or member once per open case; reports carry a text snapshot.
+  Moderators resolve with content removal, no action, or dismissal; removing content settles every open report on the
+  same item. Member reports route to member actions (warn, suspend). Reporters learn only that moderators will review.
+- D-34 Abuse limits per member: 20 posts, 60 comments and 20 reports per hour (Redis).
+
 ## Modules
 1. Identity & onboarding: register, login, logout, email verification, password reset, sessions, MFA (TOTP + recovery
    codes), rate limiting, session revocation.

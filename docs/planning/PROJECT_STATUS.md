@@ -8,10 +8,17 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
 | M1 Foundation | Done. Commit `16c3229 chore: initialize project foundation`. |
 | M2 Identity & verification | Done and verified on 30 Oct 2026: `mvn verify` 49 tests green (1 opt-in ClamAV IT skipped), frontend lint/typecheck/build green, Playwright 12/12 against the nginx stack with the rebuilt backend image. Committed as `feat(identity,verification): …` (hash in `git log`). |
 | M3 Profiles & networking | Done and verified on 30 Oct 2026: `mvn verify` 56 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 12/12 against the rebuilt stack (V003 applied). Committed as `feat(profile,networking): …`. |
-| M4 Community | Next. |
-| M5–M8 | Not started. |
+| M4 Community | Done and verified on 30 Oct 2026: `mvn verify` 62 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 12/12 against the rebuilt stack (V004 applied). Committed as `feat(community): …`. |
+| M5 Opportunities, research, mentorship | In progress: V005 migration and enums written; modules, UI and tests next. |
+| M6–M8 | Not started. |
 
-## What exists (M1 + M2 + M3)
+## What exists (M1 + M2 + M3 + M4)
+- M4: `community` module (plain-text posts with intents/visibility, hashtags, one-level comments with placeholders,
+  likes, reposts with commentary, bookmarks, trending tags, feed with visibility/blocking/suspension rules in SQL,
+  reports with snapshots, moderator queue + resolve/remove/restore, audited). Frontend: feed at `/home` (composer,
+  intent chips, search, hashtag filter), `/posts/[postId]` with comments, `/saved`, report dialog, posts on member
+  profiles, trending rail, admin `/admin/reports` queue and detail. Tests: `CommunityIT`, `PlainTextTest`,
+  authorization matrix extended.
 - M3: `profile` module (profiles with per-field privacy, skills catalogue, experience/education, sanitised photos in
   the media bucket streamed via `/members/{id}/photo`, FTS + trigram directory with filters), `networking` module
   (connection requests with auto-accept of reverse requests, accept/decline/cancel/remove, blocks; implements the
@@ -55,16 +62,17 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
   `Start-Process wsl.exe -ArgumentList "-d Ubuntu -u root -- sleep 86400" -WindowStyle Hidden`.
 
 ## Git
-`main` holds the M1, M2 and M3 commits. `origin` is configured but the first push is blocked by permissions (see above);
+`main` holds the M1–M4 commits. `origin` is configured but the first push is blocked by permissions (see above);
 retry `git push -u origin main` once access is granted.
 
 ## Next exact task
-1. M4 Community: migration V004 (posts with intent + visibility, comments with one-level replies, likes, reposts
-   with commentary, bookmarks, hashtags/post_hashtags, reports), `community` module (plain-text sanitisation, feed
-   with pagination, ownership edit/delete, report → moderation queue, moderator remove/restore), frontend feed
-   (`/home` becomes the feed, composer, post page, bookmarks `/saved`, hashtag pages) and moderation reports UI;
-   ITs for sanitisation, ownership, blocking in feed, moderation. Commit at the end.
-2. M5–M8 per `docs/planning/EXECUTION_PLAN.md`.
+1. M5: `opportunity` module (lifecycle DRAFT→OPEN→CLOSED/EXPIRED/REMOVED, INTERNAL/EXTERNAL_URL/EMAIL methods,
+   applications with author decisions, skills via the profile catalogue, search, expiry job, moderator remove),
+   `research` module (projects, needed skills, applications → members, lead management), mentorship requests in
+   `networking` (availability from the profile), frontend `/opportunities`, `/research`, mentorship tab in
+   `/connections`, "Request mentorship" on profiles; ITs per module; Playwright publish→apply→close using a
+   dev-only fixtures endpoint (never in prod). Commit at the end.
+2. M6–M8 per `docs/planning/EXECUTION_PLAN.md`.
 
 ## Known issues / decisions this session
 - Spring Boot 4.1: use `spring.session.data.redis.repository-type=indexed` (old `spring.session.redis.*` keys are ignored).

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AFFILIATION_LABELS } from "@/features/auth/types";
+import { AuthorPosts } from "@/features/community/components/author-posts";
 import { ConnectButton } from "@/features/networking/components/connect-button";
 import { isApiError } from "@/lib/api/client";
 import { formatDate } from "@/lib/api/types";
@@ -140,6 +141,7 @@ function ProfileBody({ profile }: { profile: ProfileView }) {
           </div>
         </div>
       )}
+      {!profile.restricted ? <AuthorPosts userId={profile.userId} /> : null}
     </div>
   );
 }

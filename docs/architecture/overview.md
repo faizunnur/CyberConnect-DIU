@@ -21,8 +21,10 @@ module-private; `api` is never imported; controllers never touch entities or rep
 
 Inverse dependencies use ports: `profile.application.RelationshipLookup` is implemented by the networking module so
 profile visibility can honour connections and blocks without profile depending on networking (injected `@Lazy`).
-The member directory (`profile.infrastructure.DirectorySearchRepository`) is a read-only native query that joins
-`users`, `user_affiliations`, `connections` and `blocks` for filtering; it never writes another module's tables.
+The member directory (`profile.infrastructure.DirectorySearchRepository`) and the feed
+(`community.infrastructure.FeedQueryRepository`) are read-only native queries that join `users`, `user_affiliations`,
+`connections` and `blocks` for filtering; they never write another module's tables. User-generated text goes through
+`common.text.PlainText` (sanitise + hashtags) and is rendered as text nodes only.
 Shared value enums (`AccountStatus`, `AffiliationType`, `ProfileVisibility`, `FieldVisibility`, `MessagingPolicy`,
 `ConnectionStatus`, …) live in `common.model`.
 

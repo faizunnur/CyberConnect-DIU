@@ -38,6 +38,12 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
 `TOO_MANY_SKILLS`, `SKILL_TOO_LONG`, `TOO_MANY_ENTRIES`, `VALUE_TOO_LONG`, `END_DATE_REQUIRED`, `INVALID_DATE_RANGE`,
 `PHOTO_REJECTED_MALWARE`, `FILE_EMPTY`, `IMAGE_UNREADABLE`.
 
+## Problem codes (M4)
+`POST_NOT_FOUND` (uniform: unknown, deleted, removed, blocked author or not visible), `COMMENT_NOT_FOUND`,
+`BODY_REQUIRED`, `BODY_TOO_LONG`, `POST_NOT_EDITABLE`, `POST_NOT_ACTIVE`, `COMMENT_NOT_EDITABLE`, `INVALID_PARENT`,
+`REPOST_NOT_ALLOWED`, `SELF_REPORT`, `ALREADY_REPORTED`, `UNSUPPORTED_TARGET`, `REPORT_NOT_FOUND`, `REPORT_CLOSED`,
+`NOT_CONTENT`, `POST_DELETED`, `COMMENT_DELETED`.
+
 ## Endpoint map (M2)
 - Auth: `POST /auth/register` (202 always), `POST /auth/login` → `{mfaRequired, user}`, `POST /auth/login/mfa`,
   `POST /auth/logout`, `GET /auth/me`, `POST /auth/verify-email`, `POST /auth/resend-verification`,
@@ -67,3 +73,19 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
   `POST /connections/requests` (`{userId, message?}`; a pending request in the other direction is accepted instead;
   30/h), `POST …/{id}/accept|decline`, `DELETE …/{id}` (cancel), `DELETE /connections/{userId}` (remove).
 - Blocks: `GET /blocks`, `POST /blocks` (`{userId}`; removes any connection/request), `DELETE /blocks/{userId}`.
+
+## Endpoint map (M4, verified members only)
+- Feed: `GET /feed` (intent, tag, q, author, page, size ≤ 50; newest first; only posts whose author is verified and not
+  blocked either way; CONNECTIONS_ONLY posts need an accepted connection), `GET /bookmarks`, `GET /hashtags/trending`.
+- Posts: `POST /posts` (`{intent, body, visibility?, repostOfId?}`; plain text, hashtags extracted; 20/h),
+  `GET /posts/{id}` (author sees own REMOVED/DELETED posts with the reason), `PUT /posts/{id}`, `DELETE /posts/{id}`
+  (soft), `POST/DELETE /posts/{id}/like`, `POST/DELETE /posts/{id}/bookmark`, `GET /posts/{id}/comments` (top-level
+  with nested replies; deleted parents stay as placeholders while replies exist), `POST /posts/{id}/comments`
+  (`{body, parentId?}`; one level; 60/h).
+- Comments: `PUT /comments/{id}`, `DELETE /comments/{id}` (own only).
+- Reports: `POST /reports` (`{targetType: POST|COMMENT|USER, targetId, reason, details?}` → `{id}`; one open report
+  per reporter and target; 20/h).
+- Moderation (MODERATION_ACTION, MFA): `GET /moderation/reports` (status, page, size), `GET …/summary`, `GET …/{id}`
+  (snapshot + current state), `POST …/{id}/resolve` (`{resolution: CONTENT_REMOVED|NO_ACTION|DISMISSED, note?}`;
+  removal also settles other open reports on the same item), `GET /moderation/posts/{id}`,
+  `POST /moderation/posts/{id}/remove|restore`, `POST /moderation/comments/{id}/remove|restore` (audited).

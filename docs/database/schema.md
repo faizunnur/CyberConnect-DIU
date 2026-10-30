@@ -32,8 +32,8 @@ Extensions: `pg_trgm`.
 | `moderation_actions` | member lifecycle actions | SUSPEND/UNSUSPEND/DEACTIVATE/REACTIVATE/WARN/REOPEN_VERIFICATION with reason, optional `expires_at`; **append-only** |
 
 Integrity rules covered so far: unique normalised email; unique user–affiliation pair; one active submission per
-affiliation; one appeal per submission; one live connection row per member pair; audit/review/access-log/moderation
-tables append-only.
+affiliation; one appeal per submission; one live connection row per member pair; one open report per reporter and
+target; audit/review/access-log/moderation tables append-only.
 
 ## V003 — profiles and networking (M3)
 | Table | Purpose | Notes |
@@ -46,7 +46,16 @@ tables append-only.
 | `connections` | requests and accepted connections | `status` PENDING/ACCEPTED/DECLINED, optional `message`; **partial unique index on (least, greatest) of the pair for live rows** → no reversed duplicates; not-self CHECK |
 | `blocks` | one-directional blocks | PK (blocker_id, blocked_id), not-self CHECK |
 
-Planned (M4+): mentorship_requests, posts, post_attachments, comments, post_likes, bookmarks, hashtags, post_hashtags,
-reports, opportunities, opportunity_skills, applications, research_projects, research_members, research_applications,
-conversations, conversation_members, messages, notifications, notification_preferences, impact_records,
-impact_confirmations.
+## V004 — community (M4)
+| Table | Purpose | Notes |
+|---|---|---|
+| `posts` | feed posts and reposts | `intent` CHECK (7 intents), `visibility` ALL_MEMBERS/CONNECTIONS_ONLY, `repost_of_id` (one level), `status` ACTIVE/REMOVED/DELETED with `removed_by/reason/at`, denormalised `like_count`/`comment_count`/`repost_count` (atomic SQL updates, never client-supplied), `edited_at`, generated `search_vector` (GIN); body ≤ 5000 chars |
+| `comments` | comments and one-level replies | `parent_id` → top-level comment (enforced in the service), same status model; body ≤ 2000 |
+| `post_likes` | PK (post_id, user_id) | |
+| `bookmarks` | PK (user_id, post_id) | private to the member |
+| `hashtags`, `post_hashtags` | lower-cased tags extracted from bodies (≤ 10 per post) | `tag` unique, lowercase CHECK |
+| `reports` | member reports on POST/COMMENT/USER (MESSAGE reserved for M6) | `content_snapshot` at report time, `target_owner_id`, status OPEN/RESOLVED/DISMISSED, `resolution` CONTENT_REMOVED/NO_ACTION/DISMISSED; **partial unique index: one OPEN report per reporter and target** |
+
+Planned (M5+): mentorship_requests, opportunities, opportunity_skills, applications, research_projects,
+research_members, research_applications, conversations, conversation_members, messages, notifications,
+notification_preferences, impact_records, impact_confirmations.

@@ -25,7 +25,7 @@ const items: NavItem[] = [
   { href: "/research", label: "Research", icon: FlaskConical, available: false },
   { href: "/messages", label: "Messages", icon: MessagesSquare, available: false },
   { href: "/notifications", label: "Notifications", icon: Bell, available: false },
-  { href: "/saved", label: "Saved", icon: Bookmark, available: false },
+  { href: "/saved", label: "Saved", icon: Bookmark, available: true },
   { href: "/settings/profile", label: "Settings", icon: Settings, available: true },
 ];
 

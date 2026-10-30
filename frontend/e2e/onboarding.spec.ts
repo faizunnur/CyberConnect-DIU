@@ -48,14 +48,14 @@ test.describe("applicant onboarding", () => {
     await expect(page.getByText(/a moderator will review it/i)).toBeVisible();
 
     // Verified-only areas stay closed and route back to onboarding.
-    for (const path of ["/home", "/members", "/connections"]) {
+    for (const path of ["/home", "/members", "/connections", "/saved"]) {
       await page.goto(path).catch(() => undefined); // the guard may redirect mid-navigation
       await expect(page).toHaveURL(/\/onboarding/);
     }
   });
 
   test("anonymous visitors are sent to sign-in from protected areas", async ({ page }) => {
-    for (const path of ["/home", "/members", "/connections", "/settings/profile", "/admin/moderation"]) {
+    for (const path of ["/home", "/members", "/connections", "/saved", "/settings/profile", "/admin/moderation", "/admin/reports"]) {
       await page.goto(path).catch(() => undefined); // the guard may redirect mid-navigation
       await expect(page).toHaveURL(/\/sign-in/);
     }
