@@ -1,0 +1,27 @@
+# Native development on the laptop: infrastructure runs in Docker, the backend runs from Maven/IDE over plain HTTP.
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+storage:
+  ensure-buckets: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+app:
+  rate-limits:
+    register-per-hour-per-ip: 200
+    login-per-ten-minutes-per-ip: 500
+    login-per-fifteen-minutes-per-email: 100
+    forgot-password-per-fifteen-minutes-per-ip: 100
+  environment: local
+
+logging:
+  level:
+    edu.diu.cyberconnect: DEBUG

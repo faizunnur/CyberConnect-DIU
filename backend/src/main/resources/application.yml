@@ -1,0 +1,144 @@
+spring:
+  application:
+    name: cyberconnect
+  profiles:
+    default: local
+  config:
+    # Native development reads the repository-root .env (never committed). Containers get env vars from Compose.
+    import: "optional:file:./.env[.properties],optional:file:../.env[.properties]"
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:${DB_PORT:5432}/${DB_NAME:cyberconnect}}
+    username: ${DB_APP_USER:cyberconnect_app}
+    password: ${DB_APP_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: 2
+  flyway:
+    enabled: true
+    url: ${DB_URL:jdbc:postgresql://localhost:${DB_PORT:5432}/${DB_NAME:cyberconnect}}
+    user: ${DB_MIGRATOR_USER:cyberconnect_migrator}
+    password: ${DB_MIGRATOR_PASSWORD:}
+    locations: classpath:db/migration
+    placeholders:
+      app_role: ${DB_APP_USER:cyberconnect_app}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  data:
+    web:
+      pageable:
+        # Stable JSON for pages: { content: [...], page: { size, number, totalElements, totalPages } }
+        serialization-mode: via_dto
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  session:
+    data:
+      redis:
+        namespace: cyberconnect:session
+        # Indexed repository: sessions are findable by principal, which is what immediate revocation relies on.
+        repository-type: indexed
+        flush-mode: on-save
+    timeout: ${SESSION_TIMEOUT:PT4H}
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+  mvc:
+    problemdetails:
+      enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 32MB
+
+server:
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        name: CCSESSION
+        http-only: true
+        secure: ${SESSION_COOKIE_SECURE:true}
+        same-site: lax
+        path: /
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    mail:
+      enabled: false
+  info:
+    build:
+      enabled: true
+
+app:
+  name: CyberConnect DIU
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  environment: ${APP_ENV:local}
+  mail-from: ${MAIL_FROM:no-reply@cyberconnect.local}
+  bootstrap:
+    # First account registering with this email becomes SUPER_ADMIN (while no SUPER_ADMIN exists). Clear afterwards.
+    super-admin-email: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:}
+
+storage:
+  endpoint: ${STORAGE_ENDPOINT:http://localhost:${STORAGE_PORT:9000}}
+  region: ${STORAGE_REGION:us-east-1}
+  access-key: ${STORAGE_ACCESS_KEY:}
+  secret-key: ${STORAGE_SECRET_KEY:}
+  path-style: true
+  ensure-buckets: ${STORAGE_ENSURE_BUCKETS:false}
+  buckets:
+    documents: ${STORAGE_BUCKET_DOCUMENTS:verification-documents}
+    media: ${STORAGE_BUCKET_MEDIA:member-media}
+
+crypto:
+  document-key: ${DOCUMENT_ENCRYPTION_KEY:}
+  key-id: ${DOCUMENT_ENCRYPTION_KEY_ID:k1}
+
+scanner:
+  type: ${SCANNER_TYPE:noop}
+  clamav:
+    host: ${CLAMAV_HOST:localhost}
+    port: ${CLAMAV_PORT:3310}
+    timeout-ms: 30000
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /api/v1/docs/openapi
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /api/v1/docs
+    operations-sorter: alpha
+
+logging:
+  level:
+    root: INFO
+    edu.diu.cyberconnect: INFO

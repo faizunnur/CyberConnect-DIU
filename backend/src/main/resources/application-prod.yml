@@ -1,0 +1,31 @@
+# Production: HTTPS only, no API docs, structured logs, buckets provisioned by the operator, real scanner required.
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
+
+storage:
+  ensure-buckets: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  environment: prod
+
+management:
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+    edu.diu.cyberconnect: INFO

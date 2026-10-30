@@ -1,0 +1,34 @@
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+storage:
+  ensure-buckets: true
+  buckets:
+    documents: test-documents
+    media: test-media
+
+crypto:
+  # 32 zero bytes; test-only key
+  document-key: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  key-id: test
+
+scanner:
+  type: noop
+
+app:
+  environment: test
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    edu.diu.cyberconnect: INFO

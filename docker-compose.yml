@@ -1,0 +1,202 @@
+# CyberConnect DIU — local stack.
+#   docker compose up -d                                  -> infrastructure only (postgres, redis, storage, mailpit)
+#   docker compose --profile full up -d --build           -> full stack behind nginx
+#   docker compose --profile full --profile scanning up   -> + ClamAV
+# Production uses: docker compose -f docker-compose.yml -f docker-compose.prod.yml ... (hardening overrides).
+name: cyberconnect-diu
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: ${DB_NAME:-cyberconnect}
+      POSTGRES_USER: ${DB_MIGRATOR_USER:-cyberconnect_migrator}
+      POSTGRES_PASSWORD: ${DB_MIGRATOR_PASSWORD:?DB_MIGRATOR_PASSWORD missing - copy .env.example to .env}
+      APP_DB_USER: ${DB_APP_USER:-cyberconnect_app}
+      APP_DB_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD missing - copy .env.example to .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  redis:
+    image: redis:7.4.12-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD missing - copy .env.example to .env}
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction"]
+    volumes:
+      - redis-data:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  storage:
+    image: rustfs/rustfs:1.0.4
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      RUSTFS_ACCESS_KEY: ${STORAGE_ACCESS_KEY:?STORAGE_ACCESS_KEY missing - copy .env.example to .env}
+      RUSTFS_SECRET_KEY: ${STORAGE_SECRET_KEY:?STORAGE_SECRET_KEY missing - copy .env.example to .env}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+    volumes:
+      - storage-data:/data
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health > /dev/null || wget -qO- http://127.0.0.1:9000/health > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  clamav:
+    image: clamav/clamav:1.4.6
+    profiles: [scanning]
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      CLAMAV_NO_MILTERD: "true"
+    volumes:
+      - clamav-db:/var/lib/clamav
+    networks: [data, app]
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 300s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  backend:
+    profiles: [full]
+    build:
+      context: ./backend
+    image: cyberconnect/backend:dev
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      APP_ENV: docker
+      APP_BASE_URL: http://localhost:${APP_PORT:-8088}
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cyberconnect}
+      DB_MIGRATOR_USER: ${DB_MIGRATOR_USER:-cyberconnect_migrator}
+      DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD}
+      DB_APP_USER: ${DB_APP_USER:-cyberconnect_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      STORAGE_ENDPOINT: http://storage:9000
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
+      STORAGE_ENSURE_BUCKETS: "true"
+      DOCUMENT_ENCRYPTION_KEY: ${DOCUMENT_ENCRYPTION_KEY:?DOCUMENT_ENCRYPTION_KEY missing - copy .env.example to .env}
+      DOCUMENT_ENCRYPTION_KEY_ID: ${DOCUMENT_ENCRYPTION_KEY_ID:-k1}
+      SCANNER_TYPE: ${SCANNER_TYPE:-noop}
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: "1025"
+      MAIL_FROM: ${MAIL_FROM:-no-reply@cyberconnect.local}
+      BOOTSTRAP_SUPER_ADMIN_EMAIL: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:-}
+      SESSION_COOKIE_SECURE: "false"
+      API_DOCS_ENABLED: "true"
+    expose: ["8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    networks: [app, data]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  frontend:
+    profiles: [full]
+    build:
+      context: ./frontend
+    image: cyberconnect/frontend:dev
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://backend:8080
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    expose: ["3000"]
+    networks: [app]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  nginx:
+    profiles: [full]
+    image: nginx:1.28.3-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "${APP_PORT:-8088}:80"
+    volumes:
+      - ./infrastructure/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks: [edge, app]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
+  storage-data:
+  clamav-db:
+
+networks:
+  edge:
+  app:
+  data:

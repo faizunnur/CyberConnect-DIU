@@ -1,0 +1,17 @@
+# Full local stack behind nginx on plain HTTP (http://localhost). Hostnames come from Compose environment variables.
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+storage:
+  ensure-buckets: true
+
+app:
+  rate-limits:
+    register-per-hour-per-ip: 200
+    login-per-ten-minutes-per-ip: 500
+    login-per-fifteen-minutes-per-email: 100
+    forgot-password-per-fifteen-minutes-per-ip: 100
+  environment: docker
