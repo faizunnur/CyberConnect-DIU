@@ -17,7 +17,7 @@ import org.testcontainers.lifecycle.Startables;
  * Shared infrastructure for integration tests: PostgreSQL (with the migrator/app role split), Redis and an
  * S3-compatible store, started once per JVM. Requires Docker.
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import({TestMailConfig.class, TestActors.class})
 @ActiveProfiles("test")

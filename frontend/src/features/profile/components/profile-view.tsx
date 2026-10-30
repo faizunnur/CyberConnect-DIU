@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AFFILIATION_LABELS } from "@/features/auth/types";
 import { AuthorPosts } from "@/features/community/components/author-posts";
+import { MemberImpactCard } from "@/features/impact/components/member-impact";
+import { MessageButton } from "@/features/messaging/components/message-button";
 import { ConnectButton } from "@/features/networking/components/connect-button";
 import { RequestMentorshipButton } from "@/features/networking/components/mentorship";
 import { isApiError } from "@/lib/api/client";
@@ -61,6 +63,7 @@ function ProfileBody({ profile }: { profile: ProfileView }) {
         </div>
         <div className="flex flex-col items-start gap-2">
           <ConnectButton userId={profile.userId} relationship={profile.relationship} />
+          {!profile.relationship.self ? <MessageButton userId={profile.userId} name={profile.displayName} /> : null}
           {profile.mentorAvailable && !profile.relationship.self ? <RequestMentorshipButton mentorId={profile.userId} mentorName={profile.displayName} /> : null}
         </div>
       </header>
@@ -126,6 +129,7 @@ function ProfileBody({ profile }: { profile: ProfileView }) {
             </Card>
           </div>
           <div className="space-y-6">
+            <MemberImpactCard userId={profile.userId} />
             <Card>
               <CardHeader><CardTitle>Skills</CardTitle></CardHeader>
               <CardContent>

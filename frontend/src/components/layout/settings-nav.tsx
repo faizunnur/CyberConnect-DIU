@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { href: "/settings/profile", label: "Profile" },
   { href: "/settings/privacy", label: "Privacy" },
+  { href: "/settings/notifications", label: "Notifications" },
   { href: "/settings/security", label: "Security" },
 ];
 

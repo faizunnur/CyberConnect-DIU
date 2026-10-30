@@ -34,7 +34,8 @@ Extensions: `pg_trgm`.
 Integrity rules covered so far: unique normalised email; unique user–affiliation pair; one active submission per
 affiliation; one appeal per submission; one live connection row per member pair; one open report per reporter and
 target; one application per opportunity and applicant; one pending research application and one live mentorship
-request per pair; audit/review/access-log/moderation tables append-only.
+request per pair; one direct conversation per pair; one live impact record per source and pair; audit/review/access-log/moderation/
+impact-confirmation tables append-only.
 
 ## V003 — profiles and networking (M3)
 | Table | Purpose | Notes |
@@ -67,5 +68,19 @@ request per pair; audit/review/access-log/moderation tables append-only.
 | `research_project_skills`, `research_members` (role LEAD/MEMBER), `research_applications` | collaboration | **partial unique: one PENDING application per project and applicant** |
 | `mentorship_requests` | mentee → mentor requests | status PENDING/ACCEPTED/DECLINED/COMPLETED/CANCELLED, topic, message, response note; not-self CHECK; **partial unique: one live request per pair** |
 
-Planned (M6+): conversations, conversation_members, messages, notifications, notification_preferences,
-impact_records, impact_confirmations.
+## V006 — messaging and notifications (M6)
+| Table | Purpose | Notes |
+|---|---|---|
+| `conversations` | direct conversations | `direct_key` (ordered pair, UNIQUE) → one conversation per pair; last-message summary columns |
+| `conversation_members` | per-member state | `state` ACTIVE/REQUEST/DECLINED/ARCHIVED (message requests are the recipient's state, D-40), `last_read_message_id`/`last_read_at` |
+| `messages` | plain-text messages ≤ 4000 chars | `deleted_at`/`deleted_by` (author or moderator), keyset index (conversation_id, created_at DESC, id DESC) |
+| `notifications` | in-app inbox | `type`, title, body, link, `actor_id`, `read_at`; partial index on unread |
+| `notification_preferences` | per type `in_app`/`email` | PK (user_id, type); absent row = defaults (`NotificationDefaults`) |
+
+## V007 — impact (M7)
+| Table | Purpose | Notes |
+|---|---|---|
+| `impact_records` | confirmed outcomes (D-12) | `impact_type` JOB_REFERRAL/RESEARCH/MENTORSHIP with a CHECK that exactly the matching source column is set (`application_id`, `research_project_id`, `mentorship_request_id`); beneficiary ≠ contributor; `proposed_by` must be a party; status PENDING_CONFIRMATION/CONFIRMED/DISPUTED/REJECTED; per-side confirmation timestamps, dispute and resolution columns; **partial unique index on (source, beneficiary, contributor) for non-rejected rows** |
+| `impact_confirmations` | decision trail | PROPOSE/CONFIRM/DISPUTE/WITHDRAW/RESOLVE_CONFIRMED/RESOLVE_REJECTED with role BENEFICIARY/CONTRIBUTOR/MODERATOR; **append-only** |
+
+All planned tables now exist; later milestones add columns through new migrations only.

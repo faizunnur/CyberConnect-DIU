@@ -47,7 +47,7 @@ export function ProfileEditor() {
           <h1 className="text-2xl font-semibold">Your profile</h1>
           <p className="mt-1 text-muted-foreground">What verified members see about you, within your privacy settings.</p>
         </div>
-        <Link href={`/members/${data.userId}`} className="text-sm text-primary underline-offset-4 hover:underline">View as member</Link>
+        <Link href={`/members/${data.userId}`} className="text-sm text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">View as member</Link>
       </div>
       <PhotoCard profile={data} />
       <BasicsCard profile={data} />

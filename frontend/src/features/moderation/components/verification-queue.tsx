@@ -70,7 +70,7 @@ export function VerificationQueue() {
               {data.content.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <Link href={`/admin/moderation/${item.id}`} className="font-medium text-primary underline-offset-4 hover:underline">
+                    <Link href={`/admin/moderation/${item.id}`} className="font-medium text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
                       {item.applicantName}
                     </Link>
                   </TableCell>

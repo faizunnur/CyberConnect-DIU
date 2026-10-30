@@ -4,10 +4,12 @@ import edu.diu.cyberconnect.common.exception.BadRequestException;
 import edu.diu.cyberconnect.common.exception.ConflictException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.model.MentorshipStatus;
+import edu.diu.cyberconnect.common.model.NotificationType;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
 import edu.diu.cyberconnect.common.text.PlainText;
 import edu.diu.cyberconnect.networking.domain.MentorshipRequest;
 import edu.diu.cyberconnect.networking.infrastructure.MentorshipRequestRepository;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.profile.application.MemberCard;
 import edu.diu.cyberconnect.profile.application.ProfileService;
 import edu.diu.cyberconnect.profile.application.ProfileView;
@@ -34,11 +36,14 @@ public class MentorshipService {
     private final MentorshipRequestRepository requests;
     private final ProfileService profiles;
     private final RateLimiter rateLimiter;
+    private final NotificationService notifications;
 
-    public MentorshipService(MentorshipRequestRepository requests, ProfileService profiles, RateLimiter rateLimiter) {
+    public MentorshipService(MentorshipRequestRepository requests, ProfileService profiles, RateLimiter rateLimiter,
+            NotificationService notifications) {
         this.requests = requests;
         this.profiles = profiles;
         this.rateLimiter = rateLimiter;
+        this.notifications = notifications;
     }
 
     public MentorshipRequestView request(UUID menteeId, UUID mentorId, String rawTopic, String rawMessage) {
@@ -64,6 +69,8 @@ public class MentorshipService {
         }
         rateLimiter.check("mentorship-request", menteeId.toString(), REQUESTS_PER_DAY, Duration.ofDays(1));
         MentorshipRequest created = requests.save(MentorshipRequest.create(menteeId, mentorId, topic, message));
+        notifications.notify(mentorId, NotificationType.MENTORSHIP_REQUEST, "New mentorship request: " + topic, message,
+                "/connections", menteeId);
         return view(menteeId, created);
     }
 
@@ -74,6 +81,9 @@ public class MentorshipService {
         }
         String note = PlainText.sanitize(rawNote);
         request.respond(accept, note.isEmpty() ? null : note);
+        notifications.notify(request.getMenteeId(), NotificationType.MENTORSHIP_RESPONSE,
+                (accept ? "Your mentorship request was accepted: " : "Your mentorship request was declined: ") + request.getTopic(),
+                note.isEmpty() ? null : note, "/connections", mentorId);
         return view(mentorId, request);
     }
 
@@ -113,6 +123,22 @@ public class MentorshipService {
         Map<UUID, MemberCard> cards = profiles.cards(userId, people);
         MemberCard self = profiles.cards(userId, List.of(userId)).get(userId);
         return page.map(r -> view(userId, r, cards, self));
+    }
+
+    // Impact sources (D-12) ---------------------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public Optional<MentorshipLink> link(UUID requestId) {
+        return requests.findById(requestId).map(MentorshipService::toLink);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MentorshipLink> completedInvolving(UUID userId) {
+        return requests.involvingWithStatus(userId, MentorshipStatus.COMPLETED).stream().map(MentorshipService::toLink).toList();
+    }
+
+    private static MentorshipLink toLink(MentorshipRequest r) {
+        return new MentorshipLink(r.getId(), r.getTopic(), r.getStatus(), r.getMenteeId(), r.getMentorId());
     }
 
     @Transactional(readOnly = true)

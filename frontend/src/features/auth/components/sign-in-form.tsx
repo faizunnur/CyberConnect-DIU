@@ -86,7 +86,7 @@ export function SignInForm() {
         Sign in
       </Button>
       <p className="text-center text-sm">
-        <Link href="/forgot-password" className="text-primary underline-offset-4 hover:underline">
+        <Link href="/forgot-password" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
           Forgot your password?
         </Link>
       </p>

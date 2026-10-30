@@ -211,7 +211,7 @@ export function RegisterForm() {
             <input type="checkbox" {...form.register("privacyAccepted")} className="mt-1 size-4 accent-primary" />
             <span>
               I have read the{" "}
-              <Link href="/privacy" className="text-primary underline-offset-4 hover:underline" target="_blank">
+              <Link href="/privacy" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary" target="_blank">
                 privacy notice
               </Link>{" "}
               and agree that my eligibility evidence will be reviewed by moderators and retained only as described.

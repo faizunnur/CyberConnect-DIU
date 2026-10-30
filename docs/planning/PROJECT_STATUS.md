@@ -10,10 +10,29 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
 | M3 Profiles & networking | Done and verified on 30 Oct 2026: `mvn verify` 56 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 12/12 against the rebuilt stack (V003 applied). Committed as `feat(profile,networking): …`. |
 | M4 Community | Done and verified on 30 Oct 2026: `mvn verify` 62 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 12/12 against the rebuilt stack (V004 applied). Committed as `feat(community): …`. |
 | M5 Opportunities, research, mentorship | Done and verified on 30 Oct 2026: `mvn verify` 66 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 14/14 against the rebuilt stack (V005 applied) including publish→apply→close. Committed as `feat(opportunity,research,networking): …`. |
-| M6 Communication | Next. |
-| M7–M8 | Not started. |
+| M6 Communication | Done and verified on 30 Oct 2026: `mvn verify` 72 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 26/26 against the rebuilt stack (V006 applied) including the message-request flow. Committed as `feat(messaging,notification): …`. |
+| M7 Impact | Done and verified on 30 Oct 2026 (`ImpactIT`, frontend lint/typecheck/build, Playwright against the rebuilt stack). Committed as `feat(impact): …`. |
+| M8 Production readiness | Done on 30 Oct 2026: production Compose overrides + TLS nginx config, start-up guards, management port with Prometheus, request ids, notification retention, backup/restore/deploy scripts, operations docs, security checklist, axe-core accessibility spec, CI e2e job. Final full verification: `mvn verify` 72 tests green (1 opt-in skip), Playwright 26/26 (onboarding, opportunities, messaging, accessibility). Committed as `chore(ops): …`. Not deployed (no VPS yet, per mandate). |
 
-## What exists (M1 + M2 + M3 + M4 + M5)
+## What exists (M1–M8)
+- M7: `impact` module (records with exactly one on-platform source, proposer-side confirmation, counterpart
+  confirm/dispute, proposer withdraw, moderator resolution with audit, CONFIRMED-only statistics, member impact on
+  profiles), cross-module source lookups (`ApplicationLink`, `ResearchLink`, `MentorshipLink`), notifications
+  IMPACT_PROPOSED/IMPACT_RESOLVED. Frontend: `/impact` (stats, my records with confirm/dispute/withdraw, propose from
+  eligible sources), profile "Confirmed impact" card, admin `/admin/impact` dispute queue.
+- M8: `docker-compose.prod.yml`, `infrastructure/nginx/prod.conf` (TLS, HSTS, CSP, rate limits), `ProductionConfigGuard`,
+  `RequestIdFilter` (MDC + `X-Request-Id`), Prometheus registry on management port 8081 (prod), `NotificationRetentionJob`,
+  `scripts/{deploy,backup,restore}.sh`, `docs/operations/*`, `docs/security/checklist.md`, ADR-0009,
+  `e2e/accessibility.spec.ts` (axe-core), CI e2e job (manual until 1 Nov 2026).
+- M6: `messaging` module (one direct conversation per pair, policy-based message requests with accept/decline,
+  membership checks on every call, keyset history, read state, archive, own-message deletion, blocking, MESSAGE
+  reports with snapshot and moderator removal without browsing), `notification` module (in-app records with
+  per-type preferences and mandatory types, after-commit STOMP push and email; producers in networking, mentorship,
+  community, opportunity, research, verification, moderation), STOMP WebSocket at `/ws` (session cookie, origin
+  check, verified accounts, CSRF double submit on CONNECT, read-only user queues). Frontend: `/messages` two-pane UI
+  with inbox/requests/archived, `/notifications`, header bell, `/settings/notifications`, "Message" on profiles,
+  realtime provider that refreshes queries on push. Tests: `MessagingIT`, `NotificationIT`, `WebSocketIT`,
+  authorization matrix extended, Playwright `messaging.spec.ts`.
 - M5: `opportunity` module (DRAFT→OPEN→CLOSED/EXPIRED/REMOVED, INTERNAL/EXTERNAL_URL/EMAIL methods, applications
   with author decisions, skills from the shared catalogue, FTS search with block/suspension rules, nightly expiry,
   moderator remove/restore), `research` module (projects, needed skills, applications → members, lead management,
@@ -72,21 +91,18 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
   `Start-Process wsl.exe -ArgumentList "-d Ubuntu -u root -- sleep 86400" -WindowStyle Hidden`.
 
 ## Git
-`main` holds the M1–M5 commits. `origin` is configured but the first push is blocked by permissions (see above);
+`main` holds the M1–M8 commits. `origin` is configured but the first push is blocked by permissions (see above);
 retry `git push -u origin main` once access is granted.
 
-## Next exact task
-1. M6 Communication: V006 (conversations with a direct-pair key, conversation_members with REQUEST/ACTIVE/
-   DECLINED/ARCHIVED states and last_read, messages with soft delete, notifications, notification_preferences);
-   `messaging` module (policy-based message requests, membership checks on every read, keyset history, read status,
-   blocking, own-message delete, MESSAGE reports with snapshot handled by the community report service and
-   moderator removal without browsing); `notification` module (in-app records + after-commit push and email
-   according to preferences; producers: connections, mentorship, comments/replies, applications, verification
-   decisions, content removal); STOMP WebSocket at `/ws` reusing the session cookie with origin check and CSRF on
-   CONNECT, user queues for messages and notifications; frontend `/messages` two-pane UI with requests, `/notifications`,
-   bell with unread count, `/settings/notifications`, "Message" on profiles; ITs for membership/IDOR, policy,
-   WebSocket auth rejection, notification fan-out. Commit at the end.
-2. M7–M8 per `docs/planning/EXECUTION_PLAN.md`.
+## Next exact task (all milestones delivered; remaining items need the owner)
+1. Push `main` once `faizunRBAI` has write access to `faizunnur/CyberConnect-DIU` (or a credential for `faizunnur`
+   is stored): `git push -u origin main`.
+2. After 1 Nov 2026 re-enable `push`/`pull_request` triggers in `.github/workflows/*.yml` and run the Security
+   workflow; fix high/critical findings.
+3. Go-live prerequisites in `docs/security/checklist.md` (institutional approval for document collection, restore
+   drill, penetration test, legal review of privacy notice/terms), then follow `docs/operations/deployment.md`.
+4. Hardening backlog: nonce-based CSP for Next.js, CV upload on internal applications (document pipeline reuse),
+   admin UI for impact/opportunity statistics, Playwright coverage for moderation (TOTP in e2e).
 
 ## Known issues / decisions this session
 - Spring Boot 4.1: use `spring.session.data.redis.repository-type=indexed` (old `spring.session.redis.*` keys are ignored).

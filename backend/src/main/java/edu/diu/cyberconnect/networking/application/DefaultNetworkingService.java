@@ -5,6 +5,7 @@ import edu.diu.cyberconnect.common.exception.ConflictException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.model.AccountStatus;
 import edu.diu.cyberconnect.common.model.ConnectionStatus;
+import edu.diu.cyberconnect.common.model.NotificationType;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
 import edu.diu.cyberconnect.identity.application.UserAccounts;
 import edu.diu.cyberconnect.identity.application.UserSummary;
@@ -12,6 +13,7 @@ import edu.diu.cyberconnect.networking.domain.Block;
 import edu.diu.cyberconnect.networking.domain.Connection;
 import edu.diu.cyberconnect.networking.infrastructure.BlockRepository;
 import edu.diu.cyberconnect.networking.infrastructure.ConnectionRepository;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.profile.application.MemberCard;
 import edu.diu.cyberconnect.profile.application.ProfileService;
 import edu.diu.cyberconnect.profile.application.Relationship;
@@ -41,14 +43,16 @@ public class DefaultNetworkingService implements NetworkingService, Relationship
     private final UserAccounts accounts;
     private final ProfileService profiles;
     private final RateLimiter rateLimiter;
+    private final NotificationService notifications;
 
     public DefaultNetworkingService(ConnectionRepository connections, BlockRepository blocks, UserAccounts accounts,
-            ProfileService profiles, RateLimiter rateLimiter) {
+            ProfileService profiles, RateLimiter rateLimiter, NotificationService notifications) {
         this.connections = connections;
         this.blocks = blocks;
         this.accounts = accounts;
         this.profiles = profiles;
         this.rateLimiter = rateLimiter;
+        this.notifications = notifications;
     }
 
     @Override
@@ -68,10 +72,13 @@ public class DefaultNetworkingService implements NetworkingService, Relationship
             }
             // The other member already asked: treat this as acceptance rather than a reversed duplicate.
             existing.accept();
+            notifyAccepted(existing.getRequesterId(), requesterId);
             return toRequestView(requesterId, existing);
         }
         rateLimiter.check("connection-request", requesterId.toString(), REQUESTS_PER_HOUR, Duration.ofHours(1));
         Connection created = connections.save(Connection.request(requesterId, addresseeId, message));
+        notifications.notify(addresseeId, NotificationType.CONNECTION_REQUEST, nameOf(addresseeId, requesterId) + " wants to connect",
+                message, "/connections", requesterId);
         return toRequestView(requesterId, created);
     }
 
@@ -79,6 +86,17 @@ public class DefaultNetworkingService implements NetworkingService, Relationship
     public void accept(UUID userId, UUID requestId) {
         Connection request = pendingFor(userId, requestId, true);
         request.accept();
+        notifyAccepted(request.getRequesterId(), userId);
+    }
+
+    private void notifyAccepted(UUID requesterId, UUID accepterId) {
+        notifications.notify(requesterId, NotificationType.CONNECTION_ACCEPTED,
+                nameOf(requesterId, accepterId) + " accepted your connection request", null, "/members/" + accepterId, accepterId);
+    }
+
+    private String nameOf(UUID viewerId, UUID memberId) {
+        MemberCard card = profiles.cards(viewerId, List.of(memberId)).get(memberId);
+        return card == null ? "A member" : card.displayName();
     }
 
     @Override

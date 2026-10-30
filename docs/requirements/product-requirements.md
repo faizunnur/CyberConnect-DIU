@@ -72,6 +72,30 @@ instructions. Precedence: owner instructions → assessment decisions → propos
 - D-39 Listings and projects by suspended/deactivated members, or between members who block each other, are hidden.
   Skills on listings and projects come from the shared catalogue (members may add new ones).
 
+## Messaging and notifications (business rules D-40..D-43, decided 30 Oct 2026)
+- D-40 Direct messaging only (one conversation per pair). The recipient's messaging policy decides: EVERYONE → open
+  conversation; CONNECTIONS_ONLY → a message request unless already connected (the sender may send one message until
+  the recipient accepts or replies; declining stops further messages until the recipient writes back); NOBODY →
+  refused. Blocks hide the conversation from both sides. Messages are plain text (≤ 4000 characters), soft-deleted
+  by their author; moderators remove only reported messages and never browse conversations (D-14).
+- D-41 Notifications are stored in-app per type according to the member's preferences and pushed over the member's
+  own WebSocket queue after the transaction commits; email is sent for the types the member enabled (defaults: the
+  decisions people wait for). Verification decisions, moderation notices and account notices always reach the inbox.
+- D-42 Realtime transport is STOMP over WebSocket on the same origin, authenticated by the session cookie, limited to
+  the application origin, protected by the CSRF double-submit header on CONNECT, and read-only from the browser.
+- D-43 Abuse limits: 30 new conversations per day and 200 messages per hour per member.
+
+## Impact (business rules D-44..D-46, decided 30 Oct 2026)
+- D-44 An impact record references exactly one on-platform source both parties are linked to: an ACCEPTED
+  application (beneficiary = applicant, contributor = listing author), an ACTIVE or COMPLETED research project
+  (contributor = lead, beneficiary = a member the lead names, or the proposing member), or a COMPLETED mentorship
+  (beneficiary = mentee, contributor = mentor). Off-platform outcomes are out of scope.
+- D-45 The proposer's side is confirmed at proposal time; the counterpart confirms or disputes with a reason; the
+  proposer may withdraw while pending. Disputes go to moderators, who confirm or reject with an audited note. One live
+  record per source and pair; a rejected record may be proposed again. The decision trail is append-only.
+- D-46 Only CONFIRMED records count: profile totals, the member's confirmed list and the community aggregate are
+  computed from them at read time. No counter is stored or editable.
+
 ## Modules
 1. Identity & onboarding: register, login, logout, email verification, password reset, sessions, MFA (TOTP + recovery
    codes), rate limiting, session revocation.

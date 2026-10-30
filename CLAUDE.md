@@ -107,7 +107,12 @@ Branch `main`, remote `origin` = https://github.com/faizunnur/CyberConnect-DIU.g
 meaningful units. Never force-push. Never commit `.env`, secrets or real documents. GitHub Actions workflows are
 `workflow_dispatch`-only until 1 Nov 2026 (Actions minutes exhausted); re-enable push/PR triggers afterwards.
 
-## 14. Current milestone
+## 14. Operations
+Production runs with `docker-compose.prod.yml` (`scripts/deploy.sh <version>`); see `docs/operations/`. Three
+start-up guards refuse development settings in production (`ScannerProductionGuard`, `E2eFixturesGuard`,
+`ProductionConfigGuard`). Management endpoints (health, prometheus) live on port 8081, internal only.
+
+## 15. Current milestone
 See `docs/planning/PROJECT_STATUS.md` (kept current at the end of every working session).
 
 Implementation notes that are easy to get wrong:
@@ -119,18 +124,20 @@ Implementation notes that are easy to get wrong:
 - `BOOTSTRAP_SUPER_ADMIN_EMAIL` promotes the first matching account to SUPER_ADMIN/ADMIN/MODERATOR (audited).
 - Spring Data derived queries do not support `NullsLast`; use `@Query` with `order by … nulls last`.
 - Record components named like a static factory (`self()`) clash; name factories `ofSelf()` etc.
+- WebSocket CSRF: Spring's default XOR channel interceptor expects session-stored tokens; `WebSocketCsrfInterceptor`
+  replaces it with the cookie double-submit check and `WebSocketConfig` stores the handshake token in the session.
 - A bulk `@Modifying(clearAutomatically = true)` query detaches entities loaded before it: do entity mutations and
   `saveAndFlush` first, run the bulk statement last.
 - The Ubuntu WSL distro (fallback Docker engine) stops seconds after the last `wsl` session ends; keep a hidden
   `wsl -d Ubuntu -u root -- sleep 86400` process running while using the Compose stack.
 
-## 15. Approved architectural decisions
+## 16. Approved architectural decisions
 ADR-0001 modular monolith (ports for inverse module dependencies, see ADR-0008 addendum) · ADR-0002 Redis sessions · ADR-0003 nginx same-origin routing · ADR-0004 S3 storage
 abstraction (RustFS locally; MinIO is discontinued) · ADR-0005 PostgreSQL · ADR-0006 verification/affiliation state
 machine · ADR-0007 document encryption and private access · ADR-0008 ArchUnit module boundaries.
-Business-rule decisions D-01..D-39 are recorded in `docs/requirements/product-requirements.md`.
+Business-rule decisions D-01..D-46 are recorded in `docs/requirements/product-requirements.md`.
 
-## 16. Prohibited shortcuts
+## 17. Prohibited shortcuts
 No plaintext passwords; no tokens in localStorage; no frontend-only authorization; no public/presigned document URLs;
 no entity exposure; no self-assigned roles or statuses; no trusting UUIDs; no secrets in git; no CSRF disabling;
 no `ddl-auto=update`; no `latest` image tags in committed config; no real identity documents in development; no

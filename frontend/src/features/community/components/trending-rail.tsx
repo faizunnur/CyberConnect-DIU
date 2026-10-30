@@ -19,7 +19,7 @@ export function TrendingRail() {
         <ul className="space-y-1 text-sm">
           {data.map((t) => (
             <li key={t.tag} className="flex items-center justify-between gap-2">
-              <Link href={`/home?tag=${encodeURIComponent(t.tag)}`} className="truncate text-primary underline-offset-4 hover:underline">#{t.tag}</Link>
+              <Link href={`/home?tag=${encodeURIComponent(t.tag)}`} className="truncate text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">#{t.tag}</Link>
               <span className="text-xs text-muted-foreground">{t.posts}</span>
             </li>
           ))}

@@ -52,7 +52,7 @@ export function AppealQueue() {
               {data.content.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell>
-                    <Link href={`/admin/appeals/${a.id}`} className="font-medium text-primary underline-offset-4 hover:underline">{a.applicantName}</Link>
+                    <Link href={`/admin/appeals/${a.id}`} className="font-medium text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">{a.applicantName}</Link>
                   </TableCell>
                   <TableCell>{a.originalReasonCode?.replace(/_/g, " ") ?? "—"}</TableCell>
                   <TableCell>{formatDateTime(a.createdAt)}</TableCell>
@@ -89,7 +89,7 @@ export function AppealReview({ appealId }: { appealId: string }) {
         <h1 className="text-2xl font-semibold">Appeal by {data.applicantName}</h1>
         <p className="text-sm text-muted-foreground">
           Submitted {formatDateTime(data.createdAt)} · original decision {data.originalReasonCode?.replace(/_/g, " ") ?? "—"} ·{" "}
-          <Link href={`/admin/moderation/${data.submissionId}`} className="text-primary underline-offset-4 hover:underline">open submission</Link>
+          <Link href={`/admin/moderation/${data.submissionId}`} className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">open submission</Link>
         </p>
       </div>
 

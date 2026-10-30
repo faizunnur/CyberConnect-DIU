@@ -38,8 +38,8 @@ export function VerifiedRail() {
             ))}
           </ul>
           <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-            <Link href={`/members/${me.id}`} className="text-primary underline-offset-4 hover:underline">View profile</Link>
-            <Link href="/settings/profile" className="text-primary underline-offset-4 hover:underline">Edit profile</Link>
+            <Link href={`/members/${me.id}`} className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">View profile</Link>
+            <Link href="/settings/profile" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">Edit profile</Link>
           </div>
         </CardContent>
       </Card>
@@ -55,13 +55,13 @@ export function VerifiedRail() {
           </p>
           {network && network.pendingIncoming > 0 ? (
             <p>
-              <Link href="/connections" className="text-primary underline-offset-4 hover:underline">
+              <Link href="/connections" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
                 {network.pendingIncoming} pending request{network.pendingIncoming === 1 ? "" : "s"}
               </Link>
             </p>
           ) : (
             <p>
-              <Link href="/members" className="text-primary underline-offset-4 hover:underline">Find members</Link>
+              <Link href="/members" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">Find members</Link>
             </p>
           )}
         </CardContent>
@@ -75,7 +75,7 @@ export function VerifiedRail() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             Add an authenticator app for multi-factor authentication.{" "}
-            <Link href="/settings/security" className="text-primary underline-offset-4 hover:underline">
+            <Link href="/settings/security" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
               Set up MFA
             </Link>
           </CardContent>

@@ -42,6 +42,12 @@ public class ApiClient {
         public Cookie sessionCookie() {
             return cookies.get(SESSION_COOKIE);
         }
+
+        /** Raw CSRF cookie value (double-submit token), e.g. for STOMP CONNECT headers. */
+        public String csrfToken() {
+            Cookie csrf = cookies.get(CSRF_COOKIE);
+            return csrf == null ? null : csrf.getValue();
+        }
     }
 
     private final MockMvc mvc;

@@ -51,6 +51,15 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
 `PROJECT_REMOVED`, `ILLEGAL_STATUS`, `ALREADY_MEMBER`, `NOT_RECRUITING`, `NOT_MEMBER`, `LEAD_CANNOT_LEAVE`,
 `SELF_MENTORSHIP`, `MENTOR_UNAVAILABLE`, `ALREADY_MENTORING`, `REQUEST_NOT_PENDING`, `NOT_ACTIVE`.
 
+## Problem codes (M6)
+`CONVERSATION_NOT_FOUND` (uniform: unknown, not a member, blocked), `MESSAGE_NOT_FOUND`, `SELF_MESSAGE`,
+`MESSAGING_NOT_ALLOWED`, `REQUEST_PENDING` (one message until the request is accepted), `REQUEST_DECLINED`,
+`NOT_A_REQUEST`, `NOTIFICATION_NOT_FOUND`.
+
+## Problem codes (M7)
+`IMPACT_NOT_FOUND`, `SOURCE_NOT_FOUND` (uniform: unknown source or not a party), `SOURCE_NOT_ELIGIBLE`,
+`COUNTERPART_REQUIRED`, `IMPACT_EXISTS`, `NOT_AWAITING_YOU`, `NOT_WITHDRAWABLE`, `NOT_DISPUTED`.
+
 ## Endpoint map (M2)
 - Auth: `POST /auth/register` (202 always), `POST /auth/login` → `{mfaRequired, user}`, `POST /auth/login/mfa`,
   `POST /auth/logout`, `GET /auth/me`, `POST /auth/verify-email`, `POST /auth/resend-verification`,
@@ -114,3 +123,28 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
   (`{note?}`, mentor), `POST …/{id}/complete` (either party), `DELETE …/{id}` (mentee, pending only).
 - Dev only (`E2E_FIXTURES_ENABLED=true`, never in production): `POST /dev/fixtures/verified-member`
   (`{prefix?, affiliationType?, fullName?}` → `{userId, email, password}`) for Playwright.
+
+## Endpoint map (M6, verified members only)
+- Conversations: `GET /conversations?box=inbox|requests|archived`, `GET /conversations/summary` (`{unread}` conversations
+  with unread messages), `POST /conversations` (`{userId, body}`; reuses the pair's conversation; the recipient's
+  messaging policy decides ACTIVE vs REQUEST, NOBODY → 403), `GET /conversations/{id}`,
+  `GET /conversations/{id}/messages?before=<messageId>&size` (newest first, keyset), `POST …/messages` (`{body}`),
+  `POST …/read`, `POST …/accept|decline|archive|unarchive`, `DELETE /messages/{id}` (own, soft).
+  Reports: `POST /reports` with `targetType: MESSAGE` (reporter must be the other member; snapshot only, D-14);
+  moderators resolve with CONTENT_REMOVED without ever reading the thread.
+- Notifications: `GET /notifications?unread=true|false`, `GET /notifications/summary` (`{unread}`),
+  `POST /notifications/{id}/read`, `POST /notifications/read-all`, `GET/PUT /notifications/preferences`
+  (`[{type, inApp, email}]`; VERIFICATION_DECISION, CONTENT_REMOVED and ACCOUNT_NOTICE cannot be silenced in-app).
+- Realtime: STOMP over WebSocket at `/ws` (same origin through nginx). Handshake needs the session cookie, a
+  verified account and an allowed Origin; the CONNECT frame must carry `X-XSRF-TOKEN` equal to the `XSRF-TOKEN`
+  cookie. Clients may only SUBSCRIBE to `/user/queue/notifications` and `/user/queue/messages`; every other frame
+  is denied. Payloads: notification `{id, type, title, body, link}`, message = the `MessageView` of the new message.
+
+## Endpoint map (M7, verified members only)
+- Impact: `GET /impact?status` (records where the caller is beneficiary or contributor), `GET /impact/sources`
+  (eligible on-platform sources with the counterpart resolved), `GET /impact/stats` (community aggregate, CONFIRMED
+  only), `POST /impact` (`{type, sourceId, counterpartId?, title, description?}`; the proposer's side is confirmed),
+  `GET /impact/{id}` (parties only), `POST /impact/{id}/confirm|dispute|withdraw` (`dispute` takes `{reason}`),
+  `GET /members/{id}/impact` (confirmed totals and recent records, subject to profile visibility).
+- Moderation (MODERATION_ACTION, MFA): `GET /moderation/impact/disputes`, `GET /moderation/impact/{id}`,
+  `POST /moderation/impact/{id}/resolve` (`{confirmed, note?}`; audited, both parties notified).

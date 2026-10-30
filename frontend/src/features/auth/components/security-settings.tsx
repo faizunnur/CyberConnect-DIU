@@ -127,7 +127,7 @@ function MfaCard({ enabled, privileged }: { enabled: boolean; privileged: boolea
             <div className="rounded-lg border bg-muted/40 p-3 text-sm">
               <p className="text-xs text-muted-foreground">Secret key (type it manually or use the link below)</p>
               <p className="mt-1 break-all font-mono">{enrolment.secret}</p>
-              <a href={enrolment.otpauthUri} className="mt-2 inline-block text-primary underline-offset-4 hover:underline">
+              <a href={enrolment.otpauthUri} className="mt-2 inline-block text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
                 Open in authenticator app
               </a>
             </div>

@@ -24,7 +24,9 @@ profile visibility can honour connections and blocks without profile depending o
 The member directory (`profile.infrastructure.DirectorySearchRepository`) and the feed
 (`community.infrastructure.FeedQueryRepository`) are read-only native queries that join `users`, `user_affiliations`,
 `connections` and `blocks` for filtering; they never write another module's tables. User-generated text goes through
-`common.text.PlainText` (sanitise + hashtags) and is rendered as text nodes only.
+`common.text.PlainText` (sanitise + hashtags) and is rendered as text nodes only. Notifications are produced by
+feature modules through `notification.application.NotificationService`; delivery (STOMP push via
+`common.realtime.RealtimePublisher`, email) happens in an after-commit listener so rolled-back work never notifies.
 Shared value enums (`AccountStatus`, `AffiliationType`, `ProfileVisibility`, `FieldVisibility`, `MessagingPolicy`,
 `ConnectionStatus`, …) live in `common.model`.
 

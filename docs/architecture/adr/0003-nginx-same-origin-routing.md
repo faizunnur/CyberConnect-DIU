@@ -15,3 +15,11 @@ an equivalent rewrite when `API_PROXY_TARGET` is set; production never sets it.
 ## Consequences
 Server components that need user data forward the session cookie to the backend explicitly. Document streaming goes
 nginx → backend with `proxy_buffering off`. TLS terminates at nginx in production.
+
+## Addendum (30 Oct 2026, M6)
+`/ws` is the STOMP WebSocket endpoint (`common.realtime.WebSocketConfig`), proxied by nginx with the Upgrade headers.
+The handshake is authenticated by the session cookie, restricted to the application origin and to verified accounts;
+the CONNECT frame carries the CSRF cookie value in `X-XSRF-TOKEN` (double submit, `WebSocketCsrfInterceptor`).
+Browsers only subscribe to their own user queues; all other STOMP frames are denied (`WebSocketSecurityConfig`).
+In native development the browser connects to the backend directly (`NEXT_PUBLIC_WS_URL`) because the Next dev
+server does not proxy WebSockets.

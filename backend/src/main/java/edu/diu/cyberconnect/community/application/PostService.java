@@ -5,6 +5,7 @@ import edu.diu.cyberconnect.common.exception.BadRequestException;
 import edu.diu.cyberconnect.common.exception.ConflictException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.model.ContentStatus;
+import edu.diu.cyberconnect.common.model.NotificationType;
 import edu.diu.cyberconnect.common.model.PostIntent;
 import edu.diu.cyberconnect.common.model.PostVisibility;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
@@ -22,6 +23,7 @@ import edu.diu.cyberconnect.community.infrastructure.PostHashtagRepository;
 import edu.diu.cyberconnect.community.infrastructure.PostLikeRepository;
 import edu.diu.cyberconnect.community.infrastructure.PostRepository;
 import edu.diu.cyberconnect.identity.application.AuditContext;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,10 +54,12 @@ public class PostService {
     private final RateLimiter rateLimiter;
     private final AuditService audit;
     private final AuditContext auditContext;
+    private final NotificationService notifications;
 
     public PostService(PostRepository posts, PostLikeRepository likes, BookmarkRepository bookmarks,
             HashtagRepository hashtags, PostHashtagRepository postHashtags, FeedQueryRepository feedQuery,
-            PostAssembler assembler, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext) {
+            PostAssembler assembler, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext,
+            NotificationService notifications) {
         this.posts = posts;
         this.likes = likes;
         this.bookmarks = bookmarks;
@@ -66,6 +70,7 @@ public class PostService {
         this.rateLimiter = rateLimiter;
         this.audit = audit;
         this.auditContext = auditContext;
+        this.notifications = notifications;
     }
 
     public PostView create(UUID authorId, PostIntent intent, String rawBody, PostVisibility visibility, UUID repostOfId) {
@@ -189,6 +194,8 @@ public class PostService {
             }
             audit.record(auditContext.entryAs(moderatorId, CommunityAuditActions.POST_REMOVED,
                     CommunityAuditActions.TARGET_POST, postId, Map.of("reason", reason, "authorId", post.getAuthorId().toString())));
+            notifications.notify(post.getAuthorId(), NotificationType.CONTENT_REMOVED, "A post of yours was removed", reason,
+                    "/posts/" + postId, null);
         }
         return assembler.assembleOne(moderatorId, post, true);
     }

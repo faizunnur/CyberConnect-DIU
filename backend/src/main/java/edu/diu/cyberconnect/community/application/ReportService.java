@@ -15,6 +15,8 @@ import edu.diu.cyberconnect.community.domain.Post;
 import edu.diu.cyberconnect.community.domain.Report;
 import edu.diu.cyberconnect.community.infrastructure.ReportRepository;
 import edu.diu.cyberconnect.identity.application.AuditContext;
+import edu.diu.cyberconnect.messaging.application.MessagingService;
+import edu.diu.cyberconnect.messaging.application.MessagingViews;
 import edu.diu.cyberconnect.profile.application.MemberCard;
 import edu.diu.cyberconnect.profile.application.ProfileService;
 import edu.diu.cyberconnect.profile.application.ProfileView;
@@ -43,9 +45,11 @@ public class ReportService {
     private final RateLimiter rateLimiter;
     private final AuditService audit;
     private final AuditContext auditContext;
+    private final MessagingService messaging;
 
     public ReportService(ReportRepository reports, PostService postService, CommentService commentService,
-            ProfileService profiles, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext) {
+            ProfileService profiles, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext,
+            MessagingService messaging) {
         this.reports = reports;
         this.postService = postService;
         this.commentService = commentService;
@@ -53,6 +57,7 @@ public class ReportService {
         this.rateLimiter = rateLimiter;
         this.audit = audit;
         this.auditContext = auditContext;
+        this.messaging = messaging;
     }
 
     public UUID report(UUID reporterId, ReportTargetType targetType, UUID targetId, ReportReason reason, String details) {
@@ -77,6 +82,12 @@ public class ReportService {
                 ProfileView profile = profiles.view(reporterId, targetId);
                 ownerId = targetId;
                 snapshot = profile.displayName() + (profile.headline() == null ? "" : " — " + profile.headline());
+            }
+            case MESSAGE -> {
+                // D-14: only the reported message is captured; moderators never see the conversation.
+                MessagingViews.MessageSnapshot message = messaging.snapshot(reporterId, targetId);
+                ownerId = message.senderId();
+                snapshot = message.body();
             }
             default -> throw new BadRequestException("UNSUPPORTED_TARGET", "This kind of content cannot be reported here.");
         }
@@ -121,6 +132,7 @@ public class ReportService {
             switch (report.getTargetType()) {
                 case POST -> postService.remove(moderatorId, report.getTargetId(), reason);
                 case COMMENT -> commentService.remove(moderatorId, report.getTargetId(), reason);
+                case MESSAGE -> messaging.removeByModeration(moderatorId, report.getTargetId(), reason);
                 default -> throw new BadRequestException("NOT_CONTENT",
                         "Member reports are handled with member actions (warn, suspend); choose no action or dismiss here.");
             }

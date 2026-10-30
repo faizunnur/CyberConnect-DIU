@@ -7,9 +7,11 @@ import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.model.ResearchApplicationStatus;
 import edu.diu.cyberconnect.common.model.ResearchRole;
 import edu.diu.cyberconnect.common.model.ResearchStatus;
+import edu.diu.cyberconnect.common.model.NotificationType;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
 import edu.diu.cyberconnect.common.text.PlainText;
 import edu.diu.cyberconnect.identity.application.AuditContext;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.profile.application.MemberCard;
 import edu.diu.cyberconnect.profile.application.ProfileService;
 import edu.diu.cyberconnect.profile.application.SkillView;
@@ -59,10 +61,12 @@ public class ResearchService {
     private final RateLimiter rateLimiter;
     private final AuditService audit;
     private final AuditContext auditContext;
+    private final NotificationService notifications;
 
     public ResearchService(ResearchProjectRepository projects, ResearchProjectSkillRepository links,
             ResearchMemberRepository members, ResearchApplicationRepository applications, ResearchSearchRepository search,
-            ProfileService profiles, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext) {
+            ProfileService profiles, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext,
+            NotificationService notifications) {
         this.projects = projects;
         this.links = links;
         this.members = members;
@@ -72,6 +76,7 @@ public class ResearchService {
         this.rateLimiter = rateLimiter;
         this.audit = audit;
         this.auditContext = auditContext;
+        this.notifications = notifications;
     }
 
     public ResearchViews.Project create(UUID leadId, ResearchCommand command) {
@@ -139,6 +144,8 @@ public class ResearchService {
         rateLimiter.check("research-apply", applicantId.toString(), APPLICATIONS_PER_DAY, Duration.ofDays(1));
         ResearchApplication application = applications.save(ResearchApplication.submit(id, applicantId,
                 message.isEmpty() ? null : message));
+        notifications.notify(project.getLeadId(), NotificationType.RESEARCH_APPLICATION, "Someone wants to join: " + project.getTitle(),
+                message.isEmpty() ? null : message, "/research/" + id, applicantId);
         return applicationView(application, null, cards(applicantId, List.of(project)).get(0));
     }
 
@@ -159,6 +166,10 @@ public class ResearchService {
             members.save(ResearchMember.of(id, application.getApplicantId(), ResearchRole.MEMBER));
             projects.adjustMembers(id, 1);
         }
+        ResearchProject project = projects.findById(id).orElseThrow(ResearchService::notFound);
+        notifications.notify(application.getApplicantId(), NotificationType.RESEARCH_DECISION,
+                (accept ? "You joined the project: " : "Your application was declined: ") + project.getTitle(), null,
+                "/research/" + id, leadId);
         return get(leadId, id);
     }
 
@@ -193,6 +204,26 @@ public class ResearchService {
         Map<UUID, ResearchViews.Card> cards = cards(applicantId, new ArrayList<>(byId.values())).stream()
                 .collect(Collectors.toMap(ResearchViews.Card::id, Function.identity()));
         return page.map(a -> applicationView(a, null, cards.get(a.getProjectId())));
+    }
+
+    // Impact sources (D-12) ---------------------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public java.util.Optional<ResearchLink> link(UUID projectId) {
+        return projects.findById(projectId).map(this::toLink);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ResearchLink> projectsInvolving(UUID userId) {
+        return projects.findAllById(members.projectIdsOf(userId)).stream()
+                .filter(p -> p.getStatus() == ResearchStatus.ACTIVE || p.getStatus() == ResearchStatus.COMPLETED)
+                .map(this::toLink).toList();
+    }
+
+    private ResearchLink toLink(ResearchProject p) {
+        Set<UUID> memberIds = members.findByIdProjectIdOrderByJoinedAtAsc(p.getId()).stream()
+                .map(m -> m.getId().getUserId()).collect(Collectors.toSet());
+        return new ResearchLink(p.getId(), p.getTitle(), p.getStatus(), p.getLeadId(), memberIds);
     }
 
     // Moderation ------------------------------------------------------------------------------------------------

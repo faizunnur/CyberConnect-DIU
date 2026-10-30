@@ -64,7 +64,7 @@ export function MemberList() {
             <TableBody>
               {data.content.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell><Link href={`/admin/members/${u.id}`} className="font-medium text-primary underline-offset-4 hover:underline">{u.fullName}</Link></TableCell>
+                  <TableCell><Link href={`/admin/members/${u.id}`} className="font-medium text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">{u.fullName}</Link></TableCell>
                   <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell><Badge variant={u.accountStatus === "VERIFIED" ? "default" : "secondary"}>{STATUS_LABELS[u.accountStatus]}</Badge></TableCell>
                   <TableCell>{u.roles.filter((r) => r !== "MEMBER").join(", ") || "member"}</TableCell>

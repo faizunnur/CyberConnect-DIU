@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, Flag, Gavel, History, Settings2, Users, type LucideIcon } from "lucide-react";
+import { Award, ClipboardList, Flag, Gavel, History, Settings2, Users, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,6 +23,7 @@ const items: Item[] = [
   { href: "/admin/moderation", label: "Verification queue", icon: ClipboardList, authority: "VERIFICATION_REVIEW" },
   { href: "/admin/appeals", label: "Appeals", icon: Gavel, authority: "APPEAL_DECIDE" },
   { href: "/admin/reports", label: "Reports", icon: Flag, authority: "MODERATION_ACTION" },
+  { href: "/admin/impact", label: "Impact disputes", icon: Award, authority: "MODERATION_ACTION" },
   { href: "/admin/members", label: "Members", icon: Users, authority: "MEMBER_MANAGE" },
   { href: "/admin/settings", label: "Settings", icon: Settings2, authority: "SETTINGS_MANAGE" },
   { href: "/admin/audit", label: "Audit history", icon: History, authority: "AUDIT_READ" },

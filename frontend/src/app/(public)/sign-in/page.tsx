@@ -13,7 +13,7 @@ export default function SignInPage() {
       footer={
         <>
           New here?{" "}
-          <Link href="/register" className="text-primary underline-offset-4 hover:underline">
+          <Link href="/register" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
             Create an account
           </Link>
         </>

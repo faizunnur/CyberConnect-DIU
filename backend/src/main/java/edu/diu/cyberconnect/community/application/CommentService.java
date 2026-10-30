@@ -5,6 +5,7 @@ import edu.diu.cyberconnect.common.exception.BadRequestException;
 import edu.diu.cyberconnect.common.exception.ConflictException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.model.ContentStatus;
+import edu.diu.cyberconnect.common.model.NotificationType;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
 import edu.diu.cyberconnect.common.text.PlainText;
 import edu.diu.cyberconnect.community.domain.Comment;
@@ -12,6 +13,7 @@ import edu.diu.cyberconnect.community.domain.Post;
 import edu.diu.cyberconnect.community.infrastructure.CommentRepository;
 import edu.diu.cyberconnect.community.infrastructure.PostRepository;
 import edu.diu.cyberconnect.identity.application.AuditContext;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.profile.application.ProfileService;
 import java.time.Duration;
 import java.util.List;
@@ -38,10 +40,11 @@ public class CommentService {
     private final RateLimiter rateLimiter;
     private final AuditService audit;
     private final AuditContext auditContext;
+    private final NotificationService notifications;
 
     public CommentService(CommentRepository comments, PostRepository posts, PostService postService,
             PostAssembler assembler, ProfileService profiles, RateLimiter rateLimiter, AuditService audit,
-            AuditContext auditContext) {
+            AuditContext auditContext, NotificationService notifications) {
         this.comments = comments;
         this.posts = posts;
         this.postService = postService;
@@ -50,6 +53,7 @@ public class CommentService {
         this.rateLimiter = rateLimiter;
         this.audit = audit;
         this.auditContext = auditContext;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -68,8 +72,9 @@ public class CommentService {
         if (!post.isActive()) {
             throw new ConflictException("POST_NOT_ACTIVE", "This post no longer accepts comments.");
         }
+        Comment parent = null;
         if (parentId != null) {
-            Comment parent = comments.findById(parentId).orElseThrow(() ->
+            parent = comments.findById(parentId).orElseThrow(() ->
                     new BadRequestException("INVALID_PARENT", "The comment you reply to does not exist."));
             if (!parent.getPostId().equals(postId) || parent.isReply() || !parent.isActive()) {
                 throw new BadRequestException("INVALID_PARENT", "Replies can only answer a top-level comment of this post.");
@@ -79,6 +84,16 @@ public class CommentService {
         rateLimiter.check("comment-create", authorId.toString(), COMMENTS_PER_HOUR, Duration.ofHours(1));
         Comment comment = comments.save(Comment.create(postId, authorId, parentId, body));
         posts.adjustComments(postId, 1);
+        String preview = body.length() > 120 ? body.substring(0, 119) + "\u2026" : body;
+        String link = "/posts/" + postId;
+        if (parent != null && !parent.getAuthorId().equals(authorId)) {
+            notifications.notify(parent.getAuthorId(), NotificationType.COMMENT_REPLY, "Someone replied to your comment",
+                    preview, link, authorId);
+        }
+        if (!post.getAuthorId().equals(authorId) && (parent == null || !parent.getAuthorId().equals(post.getAuthorId()))) {
+            notifications.notify(post.getAuthorId(), NotificationType.POST_COMMENT, "New comment on your post", preview,
+                    link, authorId);
+        }
         return view(authorId, comment);
     }
 
@@ -119,6 +134,8 @@ public class CommentService {
             audit.record(auditContext.entryAs(moderatorId, CommunityAuditActions.COMMENT_REMOVED,
                     CommunityAuditActions.TARGET_COMMENT, commentId,
                     Map.of("reason", reason, "authorId", comment.getAuthorId().toString(), "postId", comment.getPostId().toString())));
+            notifications.notify(comment.getAuthorId(), NotificationType.CONTENT_REMOVED, "A comment of yours was removed",
+                    reason, "/posts/" + comment.getPostId(), null);
         }
         return moderatorGet(moderatorId, commentId);
     }

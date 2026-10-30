@@ -158,7 +158,7 @@ function HistoryCard({ detail }: { detail: SubmissionDetail }) {
         {detail.appeal ? (
           <p>
             Appeal {detail.appeal.status.toLowerCase().replace("_", " ")}:{" "}
-            <Link href={`/admin/appeals/${detail.appeal.id}`} className="text-primary underline-offset-4 hover:underline">open appeal</Link>
+            <Link href={`/admin/appeals/${detail.appeal.id}`} className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">open appeal</Link>
           </p>
         ) : null}
       </CardContent>

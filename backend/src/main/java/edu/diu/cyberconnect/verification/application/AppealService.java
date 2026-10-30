@@ -7,6 +7,8 @@ import edu.diu.cyberconnect.common.exception.ForbiddenException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.mail.MailMessage;
 import edu.diu.cyberconnect.common.mail.MailSender;
+import edu.diu.cyberconnect.common.model.NotificationType;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
 import edu.diu.cyberconnect.identity.application.AuditContext;
 import edu.diu.cyberconnect.identity.application.UserAccounts;
@@ -45,10 +47,12 @@ public class AppealService {
     private final AuditService audit;
     private final AuditContext auditContext;
     private final RateLimiter rateLimiter;
+    private final NotificationService notifications;
 
     public AppealService(AppealRepository appeals, VerificationSubmissionRepository submissions,
             VerificationReviewRepository reviews, ReviewService reviewService, UserAccounts accounts, AppProperties app,
-            MailSender mail, AuditService audit, AuditContext auditContext, RateLimiter rateLimiter) {
+            MailSender mail, AuditService audit, AuditContext auditContext, RateLimiter rateLimiter,
+            NotificationService notifications) {
         this.appeals = appeals;
         this.submissions = submissions;
         this.reviews = reviews;
@@ -59,6 +63,7 @@ public class AppealService {
         this.audit = audit;
         this.auditContext = auditContext;
         this.rateLimiter = rateLimiter;
+        this.notifications = notifications;
     }
 
     public AppealView submit(UUID userId, UUID submissionId, String statement) {
@@ -138,6 +143,8 @@ public class AppealService {
                     VerificationAuditActions.TARGET_APPEAL, appealId, Map.of("submissionId", submission.getId().toString())));
             mail.send(new MailMessage(applicant.email(), "Your " + app.name() + " appeal was approved",
                     "Your appeal was approved and your eligibility is now verified. Sign in at " + app.baseUrl() + "."));
+            notifications.notify(applicant.id(), NotificationType.VERIFICATION_DECISION, "Your appeal was approved",
+                    textForApplicant, "/home", null);
         } else {
             accounts.lockVerification(applicant.id(), reviewerId, "Appeal denied");
             audit.record(auditContext.entry(VerificationAuditActions.APPEAL_DENIED,
@@ -145,6 +152,8 @@ public class AppealService {
             mail.send(new MailMessage(applicant.email(), "Your " + app.name() + " appeal decision",
                     "Your appeal was not approved. " + (textForApplicant == null ? "" : textForApplicant)
                             + "\n\nThis decision is final unless an administrator reopens your case."));
+            notifications.notify(applicant.id(), NotificationType.VERIFICATION_DECISION, "Your appeal was not approved",
+                    textForApplicant, "/onboarding", null);
         }
     }
 

@@ -76,7 +76,7 @@ export function ReportQueue() {
               {data.content.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell>
-                    <Link href={`/admin/reports/${r.id}`} className="font-medium text-primary underline-offset-4 hover:underline">
+                    <Link href={`/admin/reports/${r.id}`} className="font-medium text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
                       {r.targetType.toLowerCase()} by {r.targetOwner?.displayName ?? "unknown"}
                     </Link>
                     {r.openReportsOnTarget > 1 ? <span className="ml-1 text-xs text-muted-foreground">({r.openReportsOnTarget} open)</span> : null}
@@ -161,7 +161,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
                 </div>
               ) : r.targetMember ? (
                 <p>
-                  <Link href={`/admin/members/${r.targetMember.userId}`} className="text-primary underline-offset-4 hover:underline">
+                  <Link href={`/admin/members/${r.targetMember.userId}`} className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
                     {r.targetMember.displayName}
                   </Link>{" "}
                   — use member actions (warn, suspend) from the member page.
@@ -172,7 +172,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
             </div>
             {r.targetOwner ? (
               <p className="text-xs text-muted-foreground">
-                Owner: <Link href={`/admin/members/${r.targetOwner.userId}`} className="text-primary underline-offset-4 hover:underline">{r.targetOwner.displayName}</Link>
+                Owner: <Link href={`/admin/members/${r.targetOwner.userId}`} className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">{r.targetOwner.displayName}</Link>
                 {r.openReportsOnTarget > 1 ? ` · ${r.openReportsOnTarget} open reports on this item` : ""}
               </p>
             ) : null}

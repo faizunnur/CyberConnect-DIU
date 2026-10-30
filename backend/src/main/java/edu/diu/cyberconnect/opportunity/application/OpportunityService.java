@@ -6,10 +6,12 @@ import edu.diu.cyberconnect.common.exception.ConflictException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.model.ApplicationMethod;
 import edu.diu.cyberconnect.common.model.ApplicationStatus;
+import edu.diu.cyberconnect.common.model.NotificationType;
 import edu.diu.cyberconnect.common.model.OpportunityStatus;
 import edu.diu.cyberconnect.common.ratelimit.RateLimiter;
 import edu.diu.cyberconnect.common.text.PlainText;
 import edu.diu.cyberconnect.identity.application.AuditContext;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.opportunity.domain.Application;
 import edu.diu.cyberconnect.opportunity.domain.Opportunity;
 import edu.diu.cyberconnect.opportunity.domain.OpportunitySkill;
@@ -59,10 +61,12 @@ public class OpportunityService {
     private final AuditService audit;
     private final AuditContext auditContext;
     private final Clock clock;
+    private final NotificationService notifications;
 
     public OpportunityService(OpportunityRepository opportunities, OpportunitySkillRepository links,
             ApplicationRepository applications, OpportunitySearchRepository search, ProfileService profiles,
-            RateLimiter rateLimiter, AuditService audit, AuditContext auditContext, Clock clock) {
+            RateLimiter rateLimiter, AuditService audit, AuditContext auditContext, Clock clock,
+            NotificationService notifications) {
         this.opportunities = opportunities;
         this.links = links;
         this.applications = applications;
@@ -72,6 +76,7 @@ public class OpportunityService {
         this.audit = audit;
         this.auditContext = auditContext;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     public OpportunityView create(UUID authorId, OpportunityCommand command) {
@@ -181,6 +186,8 @@ public class OpportunityService {
             application = applications.save(Application.submit(id, applicantId, note.isEmpty() ? null : note));
         }
         opportunities.adjustApplications(id, 1);
+        notifications.notify(o.getAuthorId(), NotificationType.APPLICATION_RECEIVED, "New application: " + o.getTitle(),
+                note.isEmpty() ? null : (note.length() > 160 ? note.substring(0, 159) + "\u2026" : note), "/opportunities/" + id, applicantId);
         return applicationView(applicantId, application, null, cards(applicantId, List.of(opportunities.findById(id).orElseThrow())).get(0));
     }
 
@@ -209,6 +216,10 @@ public class OpportunityService {
                 .filter(a -> a.getOpportunityId().equals(id) && a.isLive())
                 .orElseThrow(() -> new NotFoundException("APPLICATION_NOT_FOUND", "Application not found."));
         application.decide(decision);
+        Opportunity o = opportunities.findById(id).orElseThrow(OpportunityService::notFound);
+        notifications.notify(application.getApplicantId(), NotificationType.APPLICATION_DECISION,
+                "Your application was marked " + decision.name().toLowerCase() + ": " + o.getTitle(), null,
+                "/opportunities/" + id, null);
         MemberCard applicant = profiles.cards(authorId, List.of(application.getApplicantId())).get(application.getApplicantId());
         return applicationView(authorId, application, applicant, null);
     }
@@ -229,6 +240,25 @@ public class OpportunityService {
         List<Opportunity> overdue = opportunities.findByStatusAndDeadlineBefore(OpportunityStatus.OPEN, LocalDate.now(clock));
         overdue.forEach(Opportunity::expire);
         return overdue.size();
+    }
+
+    // Impact sources (D-12) ---------------------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public Optional<ApplicationLink> applicationLink(UUID applicationId) {
+        return applications.findById(applicationId).flatMap(a -> opportunities.findById(a.getOpportunityId())
+                .map(o -> new ApplicationLink(a.getId(), o.getId(), o.getTitle(), a.getApplicantId(), o.getAuthorId(), a.getStatus())));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApplicationLink> acceptedApplicationsInvolving(UUID userId) {
+        List<Application> accepted = applications.acceptedInvolving(userId);
+        Map<UUID, Opportunity> byId = opportunities.findAllById(accepted.stream().map(Application::getOpportunityId).toList())
+                .stream().collect(Collectors.toMap(Opportunity::getId, Function.identity()));
+        return accepted.stream().filter(a -> byId.containsKey(a.getOpportunityId())).map(a -> {
+            Opportunity o = byId.get(a.getOpportunityId());
+            return new ApplicationLink(a.getId(), o.getId(), o.getTitle(), a.getApplicantId(), o.getAuthorId(), a.getStatus());
+        }).toList();
     }
 
     // Moderation ------------------------------------------------------------------------------------------------

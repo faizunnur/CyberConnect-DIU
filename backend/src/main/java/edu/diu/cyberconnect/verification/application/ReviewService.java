@@ -10,6 +10,8 @@ import edu.diu.cyberconnect.common.exception.ForbiddenException;
 import edu.diu.cyberconnect.common.exception.NotFoundException;
 import edu.diu.cyberconnect.common.mail.MailMessage;
 import edu.diu.cyberconnect.common.mail.MailSender;
+import edu.diu.cyberconnect.common.model.NotificationType;
+import edu.diu.cyberconnect.notification.application.NotificationService;
 import edu.diu.cyberconnect.common.model.AccountStatus;
 import edu.diu.cyberconnect.identity.application.AuditContext;
 import edu.diu.cyberconnect.identity.application.UserAccounts;
@@ -54,11 +56,12 @@ public class ReviewService {
     private final MailSender mail;
     private final AuditService audit;
     private final AuditContext auditContext;
+    private final NotificationService notifications;
 
     public ReviewService(VerificationSubmissionRepository submissions, VerificationDocumentRepository documents,
             VerificationReviewRepository reviews, RejectionReasonCodeRepository reasonCodes, AppealRepository appeals,
             AffiliationService affiliations, UserAccounts accounts, AppProperties app, MailSender mail,
-            AuditService audit, AuditContext auditContext) {
+            AuditService audit, AuditContext auditContext, NotificationService notifications) {
         this.submissions = submissions;
         this.documents = documents;
         this.reviews = reviews;
@@ -70,6 +73,7 @@ public class ReviewService {
         this.mail = mail;
         this.audit = audit;
         this.auditContext = auditContext;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -124,6 +128,8 @@ public class ReviewService {
         UserSummary applicant = accounts.get(submission.getUserId());
         mail.send(new MailMessage(applicant.email(), "Welcome to " + app.name(),
                 "Your eligibility has been verified. Sign in at " + app.baseUrl() + " to complete your profile."));
+        notifications.notify(applicant.id(), NotificationType.VERIFICATION_DECISION, "Your membership is verified",
+                "Welcome to the community. Complete your profile to be found by other members.", "/settings/profile", null);
     }
 
     public void reject(UUID submissionId, UUID reviewerId, String reasonCode, String reasonTextApplicant,
@@ -150,6 +156,8 @@ public class ReviewService {
                 VerificationAuditActions.TARGET_SUBMISSION, submissionId,
                 Map.of("userId", submission.getUserId().toString(), "reasonCode", code.getCode(),
                         "allowsResubmission", code.isAllowsResubmission())));
+        notifications.notify(applicant.id(), NotificationType.VERIFICATION_DECISION, "Your verification was not approved",
+                applicantText, "/onboarding", null);
         mail.send(new MailMessage(applicant.email(), "Your " + app.name() + " verification decision", """
                 Your verification submission was not approved.
 
