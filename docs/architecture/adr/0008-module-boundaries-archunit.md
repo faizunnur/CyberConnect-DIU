@@ -15,3 +15,8 @@ Spring Modulith was considered and rejected for M1 to avoid an extra framework; 
 ## Consequences
 Adding a module means adding its name to the test's module list. Shared security primitives (for example the
 authenticated principal) live in `common.security`, not in `identity.domain`.
+
+## Addendum (30 Oct 2026, M3)
+When two modules need each other (profile needs relationship facts, networking needs member cards), the module that
+would create a cycle defines a port interface in its `application` package and the other module implements it.
+Read-only reporting queries (directory search) may join other modules' tables in native SQL; writes stay module-private.

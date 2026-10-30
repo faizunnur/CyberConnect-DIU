@@ -32,6 +32,12 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
 `IMAGE_TOO_LARGE`, `PDF_ACTIVE_CONTENT`, `DOCUMENT_REJECTED_MALWARE`, `SCAN_UNAVAILABLE`, `MAX_FILES_REACHED`,
 `SUBMISSION_NOT_EDITABLE`, `NO_DOCUMENTS`.
 
+## Problem codes (M3)
+`MEMBER_NOT_FOUND` (uniform: unknown, non-verified or blocked either way), `ENTRY_NOT_FOUND`, `PHOTO_NOT_FOUND`,
+`SELF_CONNECTION`, `SELF_BLOCK`, `ALREADY_CONNECTED`, `REQUEST_PENDING`, `REQUEST_NOT_FOUND`, `NOT_CONNECTED`,
+`TOO_MANY_SKILLS`, `SKILL_TOO_LONG`, `TOO_MANY_ENTRIES`, `VALUE_TOO_LONG`, `END_DATE_REQUIRED`, `INVALID_DATE_RANGE`,
+`PHOTO_REJECTED_MALWARE`, `FILE_EMPTY`, `IMAGE_UNREADABLE`.
+
 ## Endpoint map (M2)
 - Auth: `POST /auth/register` (202 always), `POST /auth/login` → `{mfaRequired, user}`, `POST /auth/login/mfa`,
   `POST /auth/logout`, `GET /auth/me`, `POST /auth/verify-email`, `POST /auth/resend-verification`,
@@ -48,3 +54,16 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
   `POST /moderation/members/{id}/suspend|unsuspend`, `GET /moderation/members/{id}/actions`.
 - Admin: `GET /admin/members`, `GET …/{id}`, `PUT …/{id}/roles`, `POST …/{id}/deactivate|reactivate|reopen-verification`,
   `GET/PUT /admin/settings[/{key}]`, `GET /admin/audit`.
+
+## Endpoint map (M3, verified members only)
+- Own profile: `GET/PUT /me/profile`, `GET/PUT /me/profile/privacy`, `PUT /me/profile/skills` (`{skills: [names]}`),
+  `POST /me/profile/experiences`, `PUT/DELETE …/{id}`, `POST /me/profile/educations`, `PUT/DELETE …/{id}`,
+  `POST /me/profile/photo` (multipart `file`, JPEG/PNG ≤ 2 MiB → 512 px square JPEG), `DELETE /me/profile/photo`.
+- Members: `GET /members` (q, affiliation, skill, organization, experience, mentorAvailable, page, size ≤ 50;
+  excludes self, unsearchable and blocked members; privacy applied per viewer), `GET /members/{id}` (privacy-aware;
+  `restricted=true` for CONNECTIONS_ONLY profiles seen by non-connections; `email` only when allowed),
+  `GET /members/{id}/photo` (private, 10 min cache). `GET /skills?q=` suggestions.
+- Connections: `GET /connections`, `GET /connections/summary`, `GET /connections/requests?direction=incoming|outgoing`,
+  `POST /connections/requests` (`{userId, message?}`; a pending request in the other direction is accepted instead;
+  30/h), `POST …/{id}/accept|decline`, `DELETE …/{id}` (cancel), `DELETE /connections/{userId}` (remove).
+- Blocks: `GET /blocks`, `POST /blocks` (`{userId}`; removes any connection/request), `DELETE /blocks/{userId}`.

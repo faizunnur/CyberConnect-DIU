@@ -42,6 +42,7 @@ class AuthorizationMatrixIT extends AbstractIntegrationTest {
     void anonymousRequestsGet401OnEverythingProtected() throws Exception {
         ApiClient.Session anonymous = api.newSession();
         for (String path : new String[] {"/api/v1/auth/me", "/api/v1/verification/status", "/api/v1/me/affiliations",
+                "/api/v1/me/profile", "/api/v1/members", "/api/v1/connections", "/api/v1/blocks",
                 "/api/v1/moderation/verifications", "/api/v1/admin/members", "/api/v1/admin/audit"}) {
             MvcResult result = api.get(path, anonymous);
             api.assertStatus(result, 401);
@@ -66,7 +67,8 @@ class AuthorizationMatrixIT extends AbstractIntegrationTest {
             api.assertStatus(api.get("/api/v1/me/affiliations", session), 200);
 
             for (String path : new String[] {"/api/v1/moderation/verifications", "/api/v1/admin/members",
-                    "/api/v1/admin/settings", "/api/v1/admin/audit"}) {
+                    "/api/v1/admin/settings", "/api/v1/admin/audit", "/api/v1/me/profile", "/api/v1/members",
+                    "/api/v1/connections", "/api/v1/connections/summary", "/api/v1/blocks", "/api/v1/skills"}) {
                 MvcResult result = api.get(path, session);
                 api.assertStatus(result, 403);
                 assertThat(api.code(result)).as(entry.getKey() + " " + path).isEqualTo(entry.getValue());

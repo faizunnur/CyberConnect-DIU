@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Bookmark, Briefcase, FlaskConical, Home, MessagesSquare, Settings, Users, type LucideIcon } from "lucide-react";
+import { Bell, Bookmark, Briefcase, FlaskConical, Home, MessagesSquare, Settings, UserPlus, Users, type LucideIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -19,18 +19,20 @@ interface NavItem {
 
 const items: NavItem[] = [
   { href: "/home", label: "Home", icon: Home, available: true },
-  { href: "/members", label: "Members", icon: Users, available: false },
+  { href: "/members", label: "Members", icon: Users, available: true },
+  { href: "/connections", label: "Connections", icon: UserPlus, available: true },
   { href: "/opportunities", label: "Opportunities", icon: Briefcase, available: false },
   { href: "/research", label: "Research", icon: FlaskConical, available: false },
   { href: "/messages", label: "Messages", icon: MessagesSquare, available: false },
   { href: "/notifications", label: "Notifications", icon: Bell, available: false },
   { href: "/saved", label: "Saved", icon: Bookmark, available: false },
-  { href: "/settings/security", label: "Settings", icon: Settings, available: true },
+  { href: "/settings/profile", label: "Settings", icon: Settings, available: true },
 ];
 
 function NavLink({ item, compact }: { item: NavItem; compact?: boolean }) {
   const pathname = usePathname();
-  const active = pathname === item.href || pathname.startsWith(item.href + "/");
+  const active = pathname === item.href || pathname.startsWith(item.href + "/")
+    || (item.href.startsWith("/settings") && pathname.startsWith("/settings"));
   const className = cn(
     "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
     compact && "flex-col gap-1 px-2 py-1.5 text-[11px]",
@@ -55,7 +57,7 @@ function NavLink({ item, compact }: { item: NavItem; compact?: boolean }) {
 
 /** Verified-member shell: left navigation, centre content, right rail on desktop; bottom navigation on mobile. */
 export function AppShell({ children, rail }: { children: ReactNode; rail?: ReactNode }) {
-  const mobileItems = items.filter((i) => ["/home", "/members", "/opportunities", "/messages", "/settings/security"].includes(i.href));
+  const mobileItems = items.filter((i) => ["/home", "/members", "/connections", "/messages", "/settings/profile"].includes(i.href));
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">

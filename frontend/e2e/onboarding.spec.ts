@@ -47,16 +47,18 @@ test.describe("applicant onboarding", () => {
     await page.getByRole("button", { name: /submit for review/i }).click();
     await expect(page.getByText(/a moderator will review it/i)).toBeVisible();
 
-    // Verified-only area stays closed and routes back to onboarding.
-    await page.goto("/home").catch(() => undefined); // the guard may redirect mid-navigation
-    await expect(page).toHaveURL(/\/onboarding/);
+    // Verified-only areas stay closed and route back to onboarding.
+    for (const path of ["/home", "/members", "/connections"]) {
+      await page.goto(path).catch(() => undefined); // the guard may redirect mid-navigation
+      await expect(page).toHaveURL(/\/onboarding/);
+    }
   });
 
   test("anonymous visitors are sent to sign-in from protected areas", async ({ page }) => {
-    await page.goto("/home").catch(() => undefined); // the guard may redirect mid-navigation
-    await expect(page).toHaveURL(/\/sign-in/);
-    await page.goto("/admin/moderation").catch(() => undefined);
-    await expect(page).toHaveURL(/\/sign-in/);
+    for (const path of ["/home", "/members", "/connections", "/settings/profile", "/admin/moderation"]) {
+      await page.goto(path).catch(() => undefined); // the guard may redirect mid-navigation
+      await expect(page).toHaveURL(/\/sign-in/);
+    }
   });
 });
 

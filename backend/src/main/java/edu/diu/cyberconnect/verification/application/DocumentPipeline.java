@@ -6,28 +6,18 @@ import edu.diu.cyberconnect.common.config.StorageProperties;
 import edu.diu.cyberconnect.common.crypto.AesGcmEncryptor;
 import edu.diu.cyberconnect.common.exception.ApiException;
 import edu.diu.cyberconnect.common.exception.BadRequestException;
+import edu.diu.cyberconnect.common.media.ImageSanitizer;
 import edu.diu.cyberconnect.common.scanning.MalwareScanner;
 import edu.diu.cyberconnect.common.scanning.ScanResult;
 import edu.diu.cyberconnect.common.storage.ObjectStorage;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.ImageOutputStream;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -42,8 +32,6 @@ public class DocumentPipeline {
             String scanEngine, String encryptionKeyId) {
     }
 
-    private static final int MAX_IMAGE_DIMENSION = 8000;
-    private static final long MAX_IMAGE_PIXELS = 40_000_000L;
     private static final List<String> PDF_FORBIDDEN_TOKENS = List.of("/JavaScript", "/JS", "/Launch", "/EmbeddedFile",
             "/RichMedia", "/XFA");
 
@@ -79,7 +67,7 @@ public class DocumentPipeline {
         }
 
         byte[] sanitized = switch (detected) {
-            case "image/jpeg", "image/png" -> reencodeImage(original, detected);
+            case "image/jpeg", "image/png" -> ImageSanitizer.reencode(original, detected);
             case "application/pdf" -> checkPdf(original);
             default -> throw new BadRequestException("UNSUPPORTED_FILE_TYPE", "Only JPEG, PNG and PDF files are accepted.");
         };
@@ -119,62 +107,6 @@ public class DocumentPipeline {
             return "application/pdf";
         }
         return null;
-    }
-
-    /** Decodes and re-encodes the image, which discards all metadata (EXIF, GPS, embedded profiles). */
-    private static byte[] reencodeImage(byte[] original, String contentType) {
-        String format = "image/png".equals(contentType) ? "png" : "jpeg";
-        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(original))) {
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) {
-                throw new BadRequestException("IMAGE_UNREADABLE", "The image could not be decoded.");
-            }
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(input);
-                int width = reader.getWidth(0);
-                int height = reader.getHeight(0);
-                if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
-                        || (long) width * height > MAX_IMAGE_PIXELS) {
-                    throw new BadRequestException("IMAGE_TOO_LARGE", "The image dimensions are too large.");
-                }
-                BufferedImage image = reader.read(0);
-                if (image == null) {
-                    throw new BadRequestException("IMAGE_UNREADABLE", "The image could not be decoded.");
-                }
-                if ("jpeg".equals(format) && image.getType() != BufferedImage.TYPE_INT_RGB) {
-                    BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
-                    rgb.getGraphics().drawImage(image, 0, 0, java.awt.Color.WHITE, null);
-                    image = rgb;
-                }
-                return write(image, format);
-            } finally {
-                reader.dispose();
-            }
-        } catch (IOException e) {
-            throw new BadRequestException("IMAGE_UNREADABLE", "The image could not be decoded.");
-        }
-    }
-
-    private static byte[] write(BufferedImage image, String format) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(format);
-        if (!writers.hasNext()) {
-            throw new IOException("No writer for " + format);
-        }
-        ImageWriter writer = writers.next();
-        try (ImageOutputStream ios = ImageIO.createImageOutputStream(out)) {
-            writer.setOutput(ios);
-            ImageWriteParam param = writer.getDefaultWriteParam();
-            if ("jpeg".equals(format) && param.canWriteCompressed()) {
-                param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-                param.setCompressionQuality(0.9f);
-            }
-            writer.write(null, new IIOImage(image, null, null), param);
-        } finally {
-            writer.dispose();
-        }
-        return out.toByteArray();
     }
 
     /** Rejects PDFs carrying active content or attachments; evidence documents never need them. */

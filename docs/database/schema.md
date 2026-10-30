@@ -32,10 +32,21 @@ Extensions: `pg_trgm`.
 | `moderation_actions` | member lifecycle actions | SUSPEND/UNSUSPEND/DEACTIVATE/REACTIVATE/WARN/REOPEN_VERIFICATION with reason, optional `expires_at`; **append-only** |
 
 Integrity rules covered so far: unique normalised email; unique user–affiliation pair; one active submission per
-affiliation; one appeal per submission; audit/review/access-log/moderation tables append-only.
+affiliation; one appeal per submission; one live connection row per member pair; audit/review/access-log/moderation
+tables append-only.
 
-Planned (M3+): user_profiles, skills, user_skills, profile_experiences, profile_educations, connections,
-mentorship_requests, posts, post_attachments, comments, post_likes, bookmarks, hashtags, post_hashtags, reports,
-opportunities, opportunity_skills, applications, research_projects, research_members, research_applications,
-conversations, conversation_members, messages, blocks, notifications, notification_preferences, impact_records,
+## V003 — profiles and networking (M3)
+| Table | Purpose | Notes |
+|---|---|---|
+| `user_profiles` | member-facing profile + privacy settings (PK = user id) | `display_name` (defaults to the registered name), headline, bio, organization, job_title, location, country, `specializations text[]` (+ `specializations_text` copy for FTS), mentor fields, `photo_key`/`photo_version` (opaque; served via `/members/{id}/photo`), visibility CHECKs (`profile_visibility`, `email/organization/location/mentor_visibility`), `searchable`, `messaging_policy`; `search_vector` generated tsvector (GIN) + trigram index on name. Created at registration; backfilled for existing users. |
+| `skills` | shared catalogue | `slug` unique (`^[a-z0-9]+(-[a-z0-9]+)*$`), trigram index; 37 seeded cybersecurity skills, members may add more |
+| `user_skills` | member ↔ skill with `position` | PK (user_id, skill_id) |
+| `profile_experiences` | work history | `employment_type` CHECK, `start_date`/`end_date` with CHECK, `is_current` |
+| `profile_educations` | education history | `start_year`/`end_year` CHECKs |
+| `connections` | requests and accepted connections | `status` PENDING/ACCEPTED/DECLINED, optional `message`; **partial unique index on (least, greatest) of the pair for live rows** → no reversed duplicates; not-self CHECK |
+| `blocks` | one-directional blocks | PK (blocker_id, blocked_id), not-self CHECK |
+
+Planned (M4+): mentorship_requests, posts, post_attachments, comments, post_likes, bookmarks, hashtags, post_hashtags,
+reports, opportunities, opportunity_skills, applications, research_projects, research_members, research_applications,
+conversations, conversation_members, messages, notifications, notification_preferences, impact_records,
 impact_confirmations.

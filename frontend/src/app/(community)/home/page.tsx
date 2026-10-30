@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { Briefcase, FlaskConical, MessagesSquare, Users } from "lucide-react";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Home" };
 
 const upcoming = [
-  { icon: Users, title: "Member directory", text: "Find alumni by specialization, skills and organisation." },
+  { icon: Users, title: "Member directory", text: "Find alumni by specialization, skills and organisation.", href: "/members" },
   { icon: MessagesSquare, title: "Community feed", text: "Technical discussion, achievements and events." },
   { icon: Briefcase, title: "Opportunities", text: "Jobs, internships, scholarships and research assistantships." },
   { icon: FlaskConical, title: "Research hub", text: "Publish projects and find collaborators." },
@@ -17,7 +18,7 @@ export default function HomePage() {
       <div>
         <h1 className="text-2xl font-semibold">Welcome to the community</h1>
         <p className="mt-1 text-muted-foreground">
-          Your eligibility is verified. The community features below are being rolled out milestone by milestone.
+          Your eligibility is verified. Complete your profile, find members and build your network; more features arrive milestone by milestone.
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -30,7 +31,13 @@ export default function HomePage() {
               <CardTitle>{item.title}</CardTitle>
               <CardDescription>{item.text}</CardDescription>
             </CardHeader>
-            <CardContent className="text-xs text-muted-foreground">Coming soon</CardContent>
+            <CardContent className="text-xs text-muted-foreground">
+              {"href" in item && item.href ? (
+                <Link href={item.href} className="text-sm font-medium text-primary underline-offset-4 hover:underline">Open</Link>
+              ) : (
+                "Coming soon"
+              )}
+            </CardContent>
           </Card>
         ))}
       </div>

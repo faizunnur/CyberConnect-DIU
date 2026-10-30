@@ -13,6 +13,7 @@ import edu.diu.cyberconnect.identity.domain.Role;
 import edu.diu.cyberconnect.identity.domain.User;
 import edu.diu.cyberconnect.identity.infrastructure.RoleRepository;
 import edu.diu.cyberconnect.identity.infrastructure.UserRepository;
+import edu.diu.cyberconnect.profile.application.ProfileService;
 import java.time.Duration;
 import java.util.Map;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,11 +39,12 @@ public class RegistrationService {
     private final RateLimiter rateLimiter;
     private final SuperAdminBootstrap bootstrap;
     private final RateLimitProperties limits;
+    private final ProfileService profiles;
 
     public RegistrationService(UserRepository users, RoleRepository roles, PasswordEncoder passwordEncoder,
             AffiliationService affiliations, EmailVerificationService emailVerification, MailSender mail,
             AppProperties app, AuditService audit, AuditContext auditContext, RateLimiter rateLimiter,
-            SuperAdminBootstrap bootstrap, RateLimitProperties limits) {
+            SuperAdminBootstrap bootstrap, RateLimitProperties limits, ProfileService profiles) {
         this.users = users;
         this.roles = roles;
         this.passwordEncoder = passwordEncoder;
@@ -55,6 +57,7 @@ public class RegistrationService {
         this.rateLimiter = rateLimiter;
         this.bootstrap = bootstrap;
         this.limits = limits;
+        this.profiles = profiles;
     }
 
     @Transactional
@@ -80,6 +83,7 @@ public class RegistrationService {
                 .orElseThrow(() -> new IllegalStateException("MEMBER role is not seeded"));
         User user = users.save(User.register(email, passwordEncoder.encode(command.password()), command.fullName(), member));
         affiliations.createPrimary(user.getId(), command.affiliationType(), command.details());
+        profiles.ensureProfile(user.getId(), user.getFullName());
         emailVerification.issue(user);
         audit.record(auditContext.entryAs(user.getId(), AuditActions.USER_REGISTERED, AuditActions.TARGET_USER,
                 user.getId(), Map.of("affiliation", command.affiliationType().name())));

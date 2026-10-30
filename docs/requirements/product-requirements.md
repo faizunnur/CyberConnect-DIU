@@ -25,6 +25,21 @@ instructions. Precedence: owner instructions → assessment decisions → propos
 - Retention 30 days after final decision (configurable), scheduled purge keeps metadata + audit.
 - Real-document collection disabled by feature flag until institutional approval is recorded.
 
+## Profiles and networking (business rules D-25..D-29, decided 30 Oct 2026)
+- D-25 Privacy defaults: profile visible to all verified members; email hidden (NOBODY); organisation, location and
+  mentor availability visible to all members; searchable; messaging policy CONNECTIONS_ONLY. Each setting is per field.
+- D-26 A CONNECTIONS_ONLY profile still exposes name, headline, photo and verified affiliation types to any verified
+  member so that a connection request can be made; everything else requires an accepted connection.
+- D-27 Connections: one live row per member pair. A request while the other member's request is pending accepts it
+  instead of creating a reversed duplicate. Declined requests are kept but allow a new request later; requests are
+  rate-limited (30 per hour per member). Removing a connection or cancelling a request is silent.
+- D-28 Blocking is one-directional but symmetric in effect: neither side can see the other's profile, photo or
+  directory card, nor send requests; any connection or pending request between the two is deleted. The blocked member
+  is not notified; lookups answer a uniform 404 `MEMBER_NOT_FOUND`. Non-verified accounts are never visible.
+- D-29 The display name is editable and defaults to the registered legal name, which moderators keep seeing in the
+  admin area. Profile photos are re-encoded to a 512 px square JPEG (metadata dropped), malware-scanned and served
+  only through the backend; student ids and documents never appear on profiles.
+
 ## Modules
 1. Identity & onboarding: register, login, logout, email verification, password reset, sessions, MFA (TOTP + recovery
    codes), rate limiting, session revocation.

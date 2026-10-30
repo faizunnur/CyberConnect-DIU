@@ -19,6 +19,13 @@ crypto (AES-GCM), mail (SMTP port), scanning (malware scanner port), exception h
 Cross-module rules (ArchUnit `ModuleBoundariesTest`): only `application` is shared; `domain`/`infrastructure` are
 module-private; `api` is never imported; controllers never touch entities or repositories.
 
+Inverse dependencies use ports: `profile.application.RelationshipLookup` is implemented by the networking module so
+profile visibility can honour connections and blocks without profile depending on networking (injected `@Lazy`).
+The member directory (`profile.infrastructure.DirectorySearchRepository`) is a read-only native query that joins
+`users`, `user_affiliations`, `connections` and `blocks` for filtering; it never writes another module's tables.
+Shared value enums (`AccountStatus`, `AffiliationType`, `ProfileVisibility`, `FieldVisibility`, `MessagingPolicy`,
+`ConnectionStatus`, …) live in `common.model`.
+
 ## Profiles
 | Profile | Use | Cookie Secure | Buckets auto-created | API docs |
 |---|---|---|---|---|
