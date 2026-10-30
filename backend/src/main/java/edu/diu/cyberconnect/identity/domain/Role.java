@@ -1,5 +1,7 @@
 package edu.diu.cyberconnect.identity.domain;
 
+import edu.diu.cyberconnect.common.model.RoleName;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

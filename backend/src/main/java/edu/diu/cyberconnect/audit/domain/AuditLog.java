@@ -77,6 +77,14 @@ public class AuditLog {
         return actorId;
     }
 
+    public String getActorRoles() {
+        return actorRoles;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
     public String getAction() {
         return action;
     }

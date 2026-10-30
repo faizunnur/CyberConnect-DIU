@@ -1,46 +1,68 @@
 # Project status
 
-Updated: 30 Oct 2026 (session 1). Read `CLAUDE.md` first.
+Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
 
-## Current milestone: M1 — Foundation (implementation complete, Docker verification pending)
+## Milestones
+| Milestone | State |
+|---|---|
+| M1 Foundation | Done. Commit `16c3229 chore: initialize project foundation`. |
+| M2 Identity & verification | Done and verified on 30 Oct 2026: `mvn verify` 49 tests green (1 opt-in ClamAV IT skipped), frontend lint/typecheck/build green, Playwright 12/12 against the nginx stack with the rebuilt backend image. Committed as `feat(identity,verification): …` (hash in `git log`). |
+| M3 Profiles & networking | Next. |
+| M4–M8 | Not started. |
 
-### Completed
-- Repository initialised (`main`), `.gitignore`, `.editorconfig`, `.env.example`, secret generators (`scripts/`).
-- Backend skeleton on Spring Boot 4.1.2 / Java 21: modules scaffolded (identity, audit, admin + common ports),
-  security baseline (Redis sessions, SPA CSRF, deny-by-default, problem+json 401/403), Argon2id encoder,
-  `ObjectStorage` S3 port + RustFS-compatible client, `AesGcmEncryptor`, mail port, malware-scanner port with
-  production guard, health + CSRF endpoints, Flyway `V001__baseline.sql` (users, roles, user_roles,
-  system_settings, audit_logs; least-privilege grants, append-only audit), profiles local/docker/prod/test.
-- Backend tests: `AesGcmEncryptorTest`, `ModuleBoundariesTest` (ArchUnit), `FoundationIT`, `S3ObjectStorageIT`
-  (Testcontainers: postgres 17.11, redis 7.4.12, rustfs 1.0.4). `mvn test-compile` passes.
-- Frontend on Next.js 16.4.3: tokens (`globals.css`), providers (theme + TanStack Query), API client, header/footer,
-  landing page, `/healthz`, Playwright config + landing spec. `pnpm lint`, `pnpm typecheck`, `pnpm build` pass.
-- Docker: backend/frontend Dockerfiles, `docker-compose.yml` (profiles `full`, `scanning`),
-  `docker-compose.override.yml` (dev ports + Mailpit), nginx config, PostgreSQL role init script.
-- CI workflows (`ci.yml`, `security.yml`) written as `workflow_dispatch`-only until 1 Nov 2026.
-- Docs: README, CLAUDE.md, EXECUTION_PLAN, product requirements, architecture overview, ADR-0001..0008,
-  database schema, API conventions.
+## What exists (M1 + M2)
+- Backend modules: common (security, storage, crypto, mail, scanning, rate limit, exception handling), identity
+  (registration, login + MFA second step, email verification, password reset, sessions in Redis with revocation,
+  TOTP MFA + recovery codes, step-up, super-admin bootstrap), affiliation (eligibility rules, primary/additional
+  affiliations), verification (drafts, document pipeline, submissions, review queue, approve/reject with reason codes,
+  resubmission limits, appeals with separation of duties, document streaming with access log, retention purge),
+  moderation (suspend/unsuspend/deactivate/reactivate/reopen, scheduled lifting), admin (member search, roles with
+  SUPER_ADMIN safeguards, settings, audit query), audit (append-only + query).
+- Migrations: `V001__baseline.sql`, `V002__identity_and_verification.sql` (see `docs/database/schema.md`).
+- Frontend: landing, register wizard, sign-in (+ MFA step), verify-email, forgot/reset password, privacy, terms,
+  onboarding hub (email step, evidence upload, decision, appeal), community shell (`/home`, `/settings/security`),
+  admin shell with step-up banner: verification queue, submission review with document viewer and decision panel,
+  appeals queue/review, members list/detail (roles, lifecycle actions), settings editor, audit log.
+- Tests: unit (AES-GCM, TOTP vectors, password policy, state machine, document pipeline, ClamAV protocol),
+  ArchUnit boundaries, ITs (foundation, S3/RustFS, authentication flow, verification flow incl. purge,
+  authorization matrix, ownership/IDOR, mass assignment), opt-in `ClamAvEicarIT` (`CLAMAV_IT=true`),
+  Playwright (landing; applicant onboarding against the full stack with Mailpit).
 
-### In progress / blocked
-- Docker Desktop engine on the laptop is stuck in "starting" (VM init never logs a boot; host has ~1.4 GB free RAM
-  with a 1.7 GB Java language-server process). Until it starts: `mvn verify` integration tests, compose
-  verification and Playwright-against-nginx cannot run.
+## Environment facts (this laptop)
+- Docker Desktop cannot start its engine until the Windows service `com.docker.service` is started once with
+  elevation (`Start-Service com.docker.service; Set-Service com.docker.service -StartupType Automatic`), because its
+  data-disk VHDX is attached through that service. Until then, Docker work runs inside the Ubuntu WSL distro
+  (Docker 29.1.3, Compose 2.40, JDK 21, Maven 3.9.12 installed as root; unix socket only). Helper scripts live in the
+  session scratchpad (`wsl-setup.sh`, `wsl-backend-verify.sh`, `wsl-compose.sh`); recreate them if the scratchpad is gone:
+  they are one-liners around `mvn verify` and `docker compose` executed from `/mnt/d/Project/CyberConnect DIU`.
+- Do not run a Windows-side Maven build while a WSL build is writing `backend/target` (9p write clash).
+- A local PostgreSQL 18 service occupies 5432, so the dev Compose override publishes PostgreSQL on 5433.
+- GitHub Actions workflows are `workflow_dispatch`-only until 1 Nov 2026 (minutes exhausted); push/PR triggers are
+  commented in `.github/workflows/*.yml`.
+- `gh` and the git credential manager are logged in as `faizunRBAI`, which has no push permission on
+  `faizunnur/CyberConnect-DIU` (remote still empty on 30 Oct 2026). Pushing needs the owner to grant `faizunRBAI` write
+  access or to store a credential for `faizunnur`. Never force-push.
+- The Ubuntu WSL distro shuts down a few seconds after the last `wsl` session ends, which stops the Docker engine and
+  the Compose stack. Keep a hidden session open while working:
+  `Start-Process wsl.exe -ArgumentList "-d Ubuntu -u root -- sleep 86400" -WindowStyle Hidden`.
 
-### Next exact task
-1. Get the Docker engine running; run `cd backend && mvn -B verify`; fix anything the ITs reveal.
-2. `docker compose up -d` then `docker compose --profile full up -d --build`; verify http://localhost:8088 serves the
-   landing page, `/api/v1/health` responds through nginx, Flyway applied, app role restrictions hold.
-3. `E2E_BASE_URL=http://localhost:8088 pnpm e2e`.
-4. Commit `chore: initialize project foundation`, add remote `origin`, verify remote is still empty, push `main`.
-5. Start M2 (identity & verification): migrations V002+ (tokens, MFA, affiliations, submissions, documents,
-   reviews, reason codes, appeals, document access log), services, controllers, authorization filter, rate limiting,
-   ClamAV adapter, moderator UI, onboarding UI, authorization matrix tests.
+## Git
+`main` holds the M1 and M2 commits. `origin` is configured but the first push is blocked by permissions (see above);
+retry `git push -u origin main` once access is granted.
 
-### Known issues
-- None in code. `cn` and `shadcn` are runtime dependencies by design of shadcn 4 (base-nova style).
+## Next exact task
+1. M3 (profiles, directory, connections, blocking): migration V003 (user_profiles, skills, user_skills,
+   profile_experiences, profile_educations, connections, blocks), profile module, networking module, directory search
+   (tsvector + pg_trgm), privacy settings, member pages and settings UI, privacy-matrix ITs. Commit at the end.
+2. M4 community feed, then M5–M8 per `docs/planning/EXECUTION_PLAN.md`.
 
-### Decisions made this session
-- Spring Boot 4.1.2 (3.x EOL), RustFS replaces MinIO, Redis sessions, nginx same-origin routing, dev-only Next
-  rewrite via `API_PROXY_TARGET`, compose profiles instead of separate files for full stack and scanning,
-  app-side bucket creation outside production, `data` network hardened (`internal: true`) only in the prod override,
-  nginx published on 8088 locally to avoid port-80 conflicts, CI manual-trigger until 1 Nov 2026.
+## Known issues / decisions this session
+- Spring Boot 4.1: use `spring.session.data.redis.repository-type=indexed` (old `spring.session.redis.*` keys are ignored).
+- `ResponseEntityExceptionHandler` already handles `MaxUploadSizeExceededException`; override instead of re-declaring.
+- Testcontainers 2.0: `org.testcontainers.postgresql.PostgreSQLContainer`, non-generic containers.
+- Session revocation happens on rejection, suspension, deactivation, password change and privilege change only.
+  Approval and a self-initiated resubmission (REJECTED → PENDING) keep the current session (ADR-0002); integration
+  tests sign the applicant in again after each rejection.
+- Surefire must include `*IT.java`; Mockito inline needs `-Djdk.attach.allowAttachSelf=true -XX:+EnableDynamicAgentLoading`.
+- nginx `proxy_set_header` in a location disables inherited headers: each location sets `Host` explicitly.
+- shadcn 4 (`base-nova`, `@base-ui/react`) ships `cn` and `shadcn` as runtime dependencies.

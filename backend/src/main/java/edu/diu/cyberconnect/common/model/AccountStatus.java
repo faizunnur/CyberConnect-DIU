@@ -1,9 +1,9 @@
-package edu.diu.cyberconnect.identity.domain;
+package edu.diu.cyberconnect.common.model;
 
 import java.util.EnumSet;
 import java.util.Set;
 
-/** Account lifecycle. Transitions are validated by {@link #canTransitionTo(AccountStatus)}. */
+/** Account lifecycle (ADR-0006). Transitions are validated by {@link #canTransitionTo(AccountStatus)}. */
 public enum AccountStatus {
     PENDING,
     VERIFIED,

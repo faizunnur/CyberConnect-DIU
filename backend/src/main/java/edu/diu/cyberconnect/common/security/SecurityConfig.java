@@ -12,13 +12,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 /**
- * Security baseline: Redis-backed server sessions, cookie + header CSRF, deny-by-default authorization and
- * problem+json error responses. Authentication endpoints are added by the identity module.
+ * Security baseline: Redis-backed server sessions, cookie + header CSRF, deny-by-default authorization,
+ * account-state enforcement and problem+json error responses. Role checks live on controllers (@PreAuthorize).
  */
 @Configuration
 @EnableWebSecurity
@@ -29,6 +32,12 @@ public class SecurityConfig {
     public static final String[] PUBLIC_PATHS = {
             "/api/v1/health",
             "/api/v1/auth/csrf",
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/login/mfa",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
             "/api/v1/public/**",
             "/actuator/health",
             "/actuator/health/**",
@@ -37,9 +46,17 @@ public class SecurityConfig {
     };
 
     @Bean
+    SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
             ProblemDetailAuthenticationEntryPoint entryPoint,
             ProblemDetailAccessDeniedHandler accessDeniedHandler,
+            ProblemDetailWriter problemDetailWriter,
+            AccountSnapshotProvider accountSnapshotProvider,
+            SecurityContextRepository securityContextRepository,
             @Value("${server.servlet.session.cookie.secure:true}") boolean secureCookies) throws Exception {
 
         CookieCsrfTokenRepository csrfRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
@@ -50,12 +67,20 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfRepository)
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
+                .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                .addFilterBefore(new AccountAccessFilter(accountSnapshotProvider, problemDetailWriter),
+                        AuthorizationFilter.class)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                         .sessionFixation(fixation -> fixation.newSession()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_PATHS).permitAll()
+                        .requestMatchers("/api/v1/moderation/**").hasAnyAuthority(
+                                Authorities.VERIFICATION_REVIEW, Authorities.APPEAL_DECIDE, Authorities.MODERATION_ACTION)
+                        .requestMatchers("/api/v1/admin/**").hasAnyAuthority(
+                                Authorities.ROLE_ASSIGN, Authorities.SETTINGS_MANAGE, Authorities.AUDIT_READ,
+                                Authorities.MEMBER_MANAGE)
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(entryPoint)

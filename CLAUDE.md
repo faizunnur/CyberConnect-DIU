@@ -110,6 +110,14 @@ meaningful units. Never force-push. Never commit `.env`, secrets or real documen
 ## 14. Current milestone
 See `docs/planning/PROJECT_STATUS.md` (kept current at the end of every working session).
 
+Implementation notes that are easy to get wrong:
+- Session revocation needs the indexed Redis repository: `spring.session.data.redis.repository-type=indexed` (Boot 4 key).
+- Session cookie attributes come from `SessionCookieConfig`, not `server.servlet.session.cookie.*` (Boot 4 ignores those for Spring Session).
+- Surefire includes `*IT.java`; its argLine keeps JaCoCo via `@{argLine}` and enables Mockito agent attach on JDK 21.
+- Pages serialise as `{content, page:{…}}` (`spring.data.web.pageable.serialization-mode=via_dto`).
+- nginx: a location with any `proxy_set_header` must repeat `Host` etc.; otherwise Tomcat sees an invalid upstream host.
+- `BOOTSTRAP_SUPER_ADMIN_EMAIL` promotes the first matching account to SUPER_ADMIN/ADMIN/MODERATOR (audited).
+
 ## 15. Approved architectural decisions
 ADR-0001 modular monolith · ADR-0002 Redis sessions · ADR-0003 nginx same-origin routing · ADR-0004 S3 storage
 abstraction (RustFS locally; MinIO is discontinued) · ADR-0005 PostgreSQL · ADR-0006 verification/affiliation state

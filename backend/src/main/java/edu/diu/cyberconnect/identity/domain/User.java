@@ -1,5 +1,8 @@
 package edu.diu.cyberconnect.identity.domain;
 
+import edu.diu.cyberconnect.common.model.AccountStatus;
+import edu.diu.cyberconnect.common.model.RoleName;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -47,6 +50,9 @@ public class User {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "verification_locked_at")
+    private Instant verificationLockedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -111,6 +117,25 @@ public class User {
 
     public void recordLogin() {
         this.lastLoginAt = Instant.now();
+    }
+
+    /** After a denied appeal the account may not submit again until an admin reopens the case. */
+    public void lockVerification() {
+        this.verificationLockedAt = Instant.now();
+        touch();
+    }
+
+    public void unlockVerification() {
+        this.verificationLockedAt = null;
+        touch();
+    }
+
+    public boolean isVerificationLocked() {
+        return verificationLockedAt != null;
+    }
+
+    public Instant getVerificationLockedAt() {
+        return verificationLockedAt;
     }
 
     public void grantRole(Role role, UUID grantedBy) {

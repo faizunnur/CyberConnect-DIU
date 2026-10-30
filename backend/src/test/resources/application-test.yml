@@ -19,6 +19,11 @@ scanner:
   type: noop
 
 app:
+  rate-limits:
+    register-per-hour-per-ip: 1000
+    login-per-ten-minutes-per-ip: 1000
+    login-per-fifteen-minutes-per-email: 200
+    forgot-password-per-fifteen-minutes-per-ip: 200
   environment: test
 
 springdoc:

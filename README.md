@@ -24,6 +24,8 @@ cd frontend; pnpm install; pnpm dev  # http://localhost:3000  (/api proxied to :
 ```
 Mailpit inbox: http://localhost:8025 · RustFS console: http://localhost:9001 · API docs (local): http://localhost:8080/api/v1/docs
 
+The dev Compose override publishes PostgreSQL on **127.0.0.1:5433** (not 5432) so it never collides with a locally installed PostgreSQL service. First sign-in bootstrap: set `BOOTSTRAP_SUPER_ADMIN_EMAIL=you@example.org` (env `app.bootstrap.super-admin-email`) and register with that address; the account becomes SUPER_ADMIN+ADMIN+MODERATOR and must enrol MFA before using admin tools.
+
 ## Workflows
 | Goal | Command |
 |---|---|
@@ -39,6 +41,8 @@ cd backend  && mvn -B verify                       # unit + ArchUnit + Testconta
 cd backend  && mvn -B test -DexcludedGroups=integration
 cd frontend && pnpm lint && pnpm typecheck && pnpm build
 cd frontend && pnpm e2e:install && pnpm e2e        # Playwright; E2E_BASE_URL=http://localhost:8088 to target nginx
+cd frontend && E2E_BASE_URL=http://localhost:8088 E2E_MAILPIT_URL=http://localhost:8025 pnpm e2e   # full-stack flows incl. onboarding
+cd backend  && CLAMAV_IT=true mvn -B verify           # adds the real ClamAV + EICAR check (~2 GB RAM, slow first pull)
 ```
 
 ## Resource requirements (measured on an i5-12450HX, 16 GB)

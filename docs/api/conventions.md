@@ -1,14 +1,50 @@
 # API conventions
 
-- Base path `/api/v1`; JSON; UUID identifiers; ISO 8601 UTC timestamps; `page`/`size` pagination with
-  `{ content, page, size, totalElements, totalPages }` responses (keyset pagination for feeds and messages).
-- Authentication: session cookie `CCSESSION`. Bootstrap CSRF with `GET /api/v1/auth/csrf` (sets `XSRF-TOKEN`);
-  send `X-XSRF-TOKEN` on every non-GET request.
-- Errors: RFC 9457 `application/problem+json` with a stable `code` property, e.g.
+- Base path `/api/v1`; JSON; UUID identifiers; ISO 8601 UTC timestamps.
+- Pagination: `page`/`size` query parameters; responses use Spring Data's `via_dto` shape
+  `{ content: [...], page: { size, number, totalElements, totalPages } }`.
+- Authentication: session cookie `CCSESSION` (HttpOnly, SameSite=Lax, Secure in prod). Bootstrap CSRF with
+  `GET /api/v1/auth/csrf` (sets readable `XSRF-TOKEN`); send `X-XSRF-TOKEN` on every non-GET request.
+- Errors: RFC 9457 `application/problem+json` with a stable `code`, e.g.
   `{"type":"about:blank","title":"Forbidden","status":403,"detail":"…","instance":"/api/v1/members","code":"ACCOUNT_NOT_VERIFIED"}`.
-  Validation errors add `errors: [{field, message}]`. Unexpected errors add `errorId` for log correlation.
-- Public endpoints: `/api/v1/health`, `/api/v1/auth/csrf`, `/api/v1/public/**`, `/api/v1/docs/**` (non-prod),
-  `/actuator/health/**` (internal network only). Everything else requires an authenticated session, and community
-  endpoints additionally require account status VERIFIED.
-- OpenAPI: `GET /api/v1/docs/openapi` (JSON) and Swagger UI at `/api/v1/docs` in local/docker profiles only.
+  Validation errors add `errors: [{field, message}]`; unexpected errors add `errorId`.
+- OpenAPI: `GET /api/v1/docs/openapi` and Swagger UI at `/api/v1/docs` in local/docker profiles only.
 - Never return JPA entities; request DTOs never accept roles, statuses, counters, reviewer ids or ownership fields.
+
+## Access tiers (enforced by `AccountAccessFilter` + method security)
+| Tier | Who | Paths |
+|---|---|---|
+| Public | anyone | `/auth/csrf`, `/auth/register`, `/auth/login`, `/auth/login/mfa`, `/auth/verify-email`, `/auth/forgot-password`, `/auth/reset-password`, `/health`, `/public/**` |
+| Onboarding | any authenticated account, any status | `/auth/**`, `/mfa/**`, `/verification/**`, `/me/affiliations` (GET; POST needs VERIFIED), `/account/**` |
+| Community | status VERIFIED + email verified | everything else |
+| Privileged | VERIFIED + role authority + MFA enrolled | `/moderation/**` (VERIFICATION_REVIEW / APPEAL_DECIDE / MODERATION_ACTION), `/admin/**` (ROLE_ASSIGN / SETTINGS_MANAGE / AUDIT_READ / MEMBER_MANAGE) |
+
+Step-up: approve/reject/decide, document viewing, role changes, suspensions, settings changes require
+`POST /api/v1/mfa/step-up` within the last 10 minutes (else `403 MFA_STEP_UP_REQUIRED`).
+
+## Problem codes (M2)
+`AUTHENTICATION_REQUIRED`, `CSRF_TOKEN_INVALID`, `ACCESS_DENIED`, `ACCOUNT_NOT_VERIFIED`, `ACCOUNT_REJECTED`,
+`ACCOUNT_SUSPENDED`, `ACCOUNT_DEACTIVATED`, `EMAIL_NOT_VERIFIED`, `MFA_ENROLLMENT_REQUIRED`, `MFA_STEP_UP_REQUIRED`,
+`MFA_CODE_INVALID`, `MFA_SESSION_MISSING`, `INVALID_CREDENTIALS`, `RATE_LIMITED`, `TOKEN_INVALID`, `TOKEN_EXPIRED`,
+`PASSWORD_TOO_SHORT/LONG/WEAK`, `VALIDATION_FAILED`, `NOT_OWNER`, `SELF_REVIEW`, `SAME_REVIEWER`, `SELF_ROLE_CHANGE`,
+`LAST_SUPER_ADMIN`, `SUPER_ADMIN_REQUIRED`, `VERIFICATION_LOCKED`, `MAX_ATTEMPTS_REACHED`, `RESUBMISSION_NOT_ALLOWED`,
+`APPEAL_EXISTS`, `APPEAL_PENDING`, `DOCUMENT_COLLECTION_DISABLED`, `UNSUPPORTED_FILE_TYPE`, `UPLOAD_TOO_LARGE`,
+`IMAGE_TOO_LARGE`, `PDF_ACTIVE_CONTENT`, `DOCUMENT_REJECTED_MALWARE`, `SCAN_UNAVAILABLE`, `MAX_FILES_REACHED`,
+`SUBMISSION_NOT_EDITABLE`, `NO_DOCUMENTS`.
+
+## Endpoint map (M2)
+- Auth: `POST /auth/register` (202 always), `POST /auth/login` → `{mfaRequired, user}`, `POST /auth/login/mfa`,
+  `POST /auth/logout`, `GET /auth/me`, `POST /auth/verify-email`, `POST /auth/resend-verification`,
+  `POST /auth/forgot-password` (202 always), `POST /auth/reset-password`, `POST /auth/change-password`.
+- MFA: `POST /mfa/enrol`, `POST /mfa/enrol/confirm` → recovery codes, `POST /mfa/step-up`,
+  `POST /mfa/recovery-codes/regenerate`, `POST /mfa/disable` (not for privileged roles).
+- Affiliations: `GET/POST /me/affiliations`, `PUT /me/affiliations/{id}`.
+- Verification (applicant): `GET /verification/status`, `POST /verification/submissions`,
+  `POST /verification/submissions/{id}/documents` (multipart `file`, `documentType`),
+  `DELETE …/documents/{docId}`, `POST …/{id}/submit`, `POST /verification/appeals`, `GET /verification/appeals/{id}`.
+- Moderation: `GET /moderation/verifications` (status, assignee, page, size), `GET …/reason-codes`, `GET …/{id}`,
+  `POST …/{id}/assign|approve|reject`, `GET …/{id}/documents/{docId}/content` (inline stream, no-store),
+  `GET /moderation/appeals`, `GET …/{id}`, `POST …/{id}/assign|decide`,
+  `POST /moderation/members/{id}/suspend|unsuspend`, `GET /moderation/members/{id}/actions`.
+- Admin: `GET /admin/members`, `GET …/{id}`, `PUT …/{id}/roles`, `POST …/{id}/deactivate|reactivate|reopen-verification`,
+  `GET/PUT /admin/settings[/{key}]`, `GET /admin/audit`.
