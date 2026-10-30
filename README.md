@@ -32,7 +32,7 @@ The dev Compose override publishes PostgreSQL on **127.0.0.1:5433** (not 5432) s
 | Infrastructure only (daily development) | `docker compose up -d` |
 | Full stack through nginx | `docker compose --profile full up -d --build` → http://localhost:8088 |
 | Full stack + ClamAV scanning | `docker compose --profile full --profile scanning up -d` and `SCANNER_TYPE=clamav` in `.env` |
-| Production-like (hardened networks, migrate job, TLS) | `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d` (M8) |
+| Production (TLS, hardened, ClamAV mandatory) | `sh scripts/deploy.sh <version>` → see `docs/operations/deployment.md` |
 | Stop | `docker compose --profile full down` (keeps volumes; `-v` destroys data, ask first) |
 
 ## Tests
@@ -44,6 +44,12 @@ cd frontend && pnpm e2e:install && pnpm e2e        # Playwright; E2E_BASE_URL=ht
 cd frontend && E2E_BASE_URL=http://localhost:8088 E2E_MAILPIT_URL=http://localhost:8025 pnpm e2e   # full-stack flows incl. onboarding
 cd backend  && CLAMAV_IT=true mvn -B verify           # adds the real ClamAV + EICAR check (~2 GB RAM, slow first pull)
 ```
+Full-stack Playwright flows (onboarding, opportunities, messaging) need `E2E_FIXTURES_ENABLED=true` on the backend
+(dev only; refused in production). The accessibility spec (axe-core, WCAG 2.2 AA) runs against the public pages.
+
+## Operations
+`docs/operations/` holds the VPS deployment guide, runbook, backup/restore procedure and monitoring notes;
+`docs/security/checklist.md` tracks the security controls and the go-live prerequisites.
 
 ## Resource requirements (measured on an i5-12450HX, 16 GB)
 | Mode | RAM (approx.) | Notes |

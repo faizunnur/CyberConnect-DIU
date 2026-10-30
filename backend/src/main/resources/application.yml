@@ -82,10 +82,11 @@ server:
     include-binding-errors: never
 
 management:
+  # Production moves management to its own port (application-prod.yml) so it never passes through nginx.
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
@@ -94,6 +95,10 @@ management:
   health:
     mail:
       enabled: false
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   info:
     build:
       enabled: true

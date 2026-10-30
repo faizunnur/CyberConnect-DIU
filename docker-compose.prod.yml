@@ -1,0 +1,66 @@
+# Production hardening overrides. Use together with the base file and WITHOUT the dev override:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile scanning up -d
+# Only nginx publishes ports (80/443). PostgreSQL, Redis and object storage stay on the internal networks.
+# Images are pinned through APP_VERSION; never use "latest".
+name: cyberconnect-diu
+
+services:
+  backend:
+    image: cyberconnect/backend:${APP_VERSION:?APP_VERSION missing (git tag or short SHA)}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      APP_ENV: prod
+      APP_BASE_URL: https://${APP_DOMAIN:?APP_DOMAIN missing}
+      SESSION_COOKIE_SECURE: "true"
+      API_DOCS_ENABLED: "false"
+      SCANNER_TYPE: clamav
+      E2E_FIXTURES_ENABLED: "false"
+      STORAGE_ENSURE_BUCKETS: "false"
+      SMTP_HOST: ${SMTP_HOST:?SMTP_HOST missing}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      MAIL_FROM: ${MAIL_FROM:?MAIL_FROM missing}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      MANAGEMENT_PORT: "8081"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
+    expose: ["8080", "8081"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+    depends_on:
+      clamav:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+
+  frontend:
+    image: cyberconnect/frontend:${APP_VERSION}
+
+  clamav:
+    profiles: [scanning]
+
+  nginx:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infrastructure/nginx/certs:/etc/nginx/certs:ro
+      - nginx-cache:/var/cache/nginx
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "--no-check-certificate", "https://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  nginx-cache:

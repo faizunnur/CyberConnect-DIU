@@ -18,6 +18,9 @@ app:
   environment: prod
 
 management:
+  server:
+    # Internal only: not published by Compose, never proxied by nginx. Scrape /actuator/prometheus from the host network.
+    port: ${MANAGEMENT_PORT:8081}
   endpoint:
     health:
       show-details: never
