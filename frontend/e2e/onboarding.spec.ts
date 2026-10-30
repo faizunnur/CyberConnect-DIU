@@ -55,7 +55,7 @@ test.describe("applicant onboarding", () => {
   });
 
   test("anonymous visitors are sent to sign-in from protected areas", async ({ page }) => {
-    for (const path of ["/home", "/members", "/connections", "/saved", "/settings/profile", "/admin/moderation", "/admin/reports"]) {
+    for (const path of ["/home", "/members", "/connections", "/saved", "/opportunities", "/research", "/settings/profile", "/admin/moderation", "/admin/reports"]) {
       await page.goto(path).catch(() => undefined); // the guard may redirect mid-navigation
       await expect(page).toHaveURL(/\/sign-in/);
     }

@@ -21,8 +21,8 @@ const items: NavItem[] = [
   { href: "/home", label: "Home", icon: Home, available: true },
   { href: "/members", label: "Members", icon: Users, available: true },
   { href: "/connections", label: "Connections", icon: UserPlus, available: true },
-  { href: "/opportunities", label: "Opportunities", icon: Briefcase, available: false },
-  { href: "/research", label: "Research", icon: FlaskConical, available: false },
+  { href: "/opportunities", label: "Opportunities", icon: Briefcase, available: true },
+  { href: "/research", label: "Research", icon: FlaskConical, available: true },
   { href: "/messages", label: "Messages", icon: MessagesSquare, available: false },
   { href: "/notifications", label: "Notifications", icon: Bell, available: false },
   { href: "/saved", label: "Saved", icon: Bookmark, available: true },
@@ -57,7 +57,7 @@ function NavLink({ item, compact }: { item: NavItem; compact?: boolean }) {
 
 /** Verified-member shell: left navigation, centre content, right rail on desktop; bottom navigation on mobile. */
 export function AppShell({ children, rail }: { children: ReactNode; rail?: ReactNode }) {
-  const mobileItems = items.filter((i) => ["/home", "/members", "/connections", "/messages", "/settings/profile"].includes(i.href));
+  const mobileItems = items.filter((i) => ["/home", "/members", "/opportunities", "/connections", "/settings/profile"].includes(i.href));
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">

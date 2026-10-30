@@ -55,5 +55,10 @@ public interface ProfileService {
 
     List<SkillView> suggestSkills(String query);
 
+    /** Normalises names, creates missing catalogue entries and returns the skills in input order (de-duplicated). */
+    List<SkillView> resolveSkills(List<String> names);
+
+    Map<UUID, SkillView> skillsByIds(Collection<UUID> skillIds);
+
     MessagingPolicy messagingPolicy(UUID userId);
 }

@@ -288,6 +288,41 @@ public class DefaultProfileService implements ProfileService {
     }
 
     @Override
+    public List<SkillView> resolveSkills(List<String> names) {
+        LinkedHashMap<String, String> bySlug = new LinkedHashMap<>();
+        for (String raw : names == null ? List.<String>of() : names) {
+            String name = Skill.normalizeName(raw);
+            String slug = Skill.slugOf(name);
+            if (!slug.isEmpty() && name.length() <= 60) {
+                bySlug.putIfAbsent(slug, name);
+            }
+        }
+        if (bySlug.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Skill> existing = skills.findBySlugIn(bySlug.keySet()).stream()
+                .collect(Collectors.toMap(Skill::getSlug, Function.identity()));
+        List<SkillView> result = new ArrayList<>();
+        for (Map.Entry<String, String> entry : bySlug.entrySet()) {
+            Skill skill = existing.get(entry.getKey());
+            if (skill == null) {
+                skill = skills.save(Skill.create(entry.getValue()));
+            }
+            result.add(toView(skill));
+        }
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, SkillView> skillsByIds(Collection<UUID> skillIds) {
+        if (skillIds.isEmpty()) {
+            return Map.of();
+        }
+        return skills.findAllById(skillIds).stream().collect(Collectors.toMap(Skill::getId, DefaultProfileService::toView));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public MessagingPolicy messagingPolicy(UUID userId) {
         return profiles.findById(userId).map(UserProfile::getMessagingPolicy).orElse(MessagingPolicy.CONNECTIONS_ONLY);

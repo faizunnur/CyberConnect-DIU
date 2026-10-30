@@ -122,6 +122,8 @@ services:
       SMTP_PORT: "1025"
       MAIL_FROM: ${MAIL_FROM:-no-reply@cyberconnect.local}
       BOOTSTRAP_SUPER_ADMIN_EMAIL: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:-}
+      # Dev-only Playwright fixtures endpoint; the backend refuses to start with this in production.
+      E2E_FIXTURES_ENABLED: ${E2E_FIXTURES_ENABLED:-false}
       SESSION_COOKIE_SECURE: "false"
       API_DOCS_ENABLED: "true"
     expose: ["8080"]

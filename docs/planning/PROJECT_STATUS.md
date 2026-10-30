@@ -9,10 +9,20 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
 | M2 Identity & verification | Done and verified on 30 Oct 2026: `mvn verify` 49 tests green (1 opt-in ClamAV IT skipped), frontend lint/typecheck/build green, Playwright 12/12 against the nginx stack with the rebuilt backend image. Committed as `feat(identity,verification): …` (hash in `git log`). |
 | M3 Profiles & networking | Done and verified on 30 Oct 2026: `mvn verify` 56 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 12/12 against the rebuilt stack (V003 applied). Committed as `feat(profile,networking): …`. |
 | M4 Community | Done and verified on 30 Oct 2026: `mvn verify` 62 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 12/12 against the rebuilt stack (V004 applied). Committed as `feat(community): …`. |
-| M5 Opportunities, research, mentorship | In progress: V005 migration and enums written; modules, UI and tests next. |
-| M6–M8 | Not started. |
+| M5 Opportunities, research, mentorship | Done and verified on 30 Oct 2026: `mvn verify` 66 tests green (1 opt-in skip), frontend lint/typecheck/build green, Playwright 14/14 against the rebuilt stack (V005 applied) including publish→apply→close. Committed as `feat(opportunity,research,networking): …`. |
+| M6 Communication | Next. |
+| M7–M8 | Not started. |
 
-## What exists (M1 + M2 + M3 + M4)
+## What exists (M1 + M2 + M3 + M4 + M5)
+- M5: `opportunity` module (DRAFT→OPEN→CLOSED/EXPIRED/REMOVED, INTERNAL/EXTERNAL_URL/EMAIL methods, applications
+  with author decisions, skills from the shared catalogue, FTS search with block/suspension rules, nightly expiry,
+  moderator remove/restore), `research` module (projects, needed skills, applications → members, lead management,
+  statuses, moderation), mentorship requests in `networking` (availability from the profile, accept/decline/
+  complete/cancel), dev-only fixtures endpoint for Playwright (`E2E_FIXTURES_ENABLED`, refused in prod).
+  Frontend: `/opportunities` (browse/mine/applications, form, detail with apply/applicants/manage/moderation),
+  `/research` (browse/mine/applications, form, detail with members/applications), Mentorship tab under
+  `/connections`, "Request mentorship" on profiles. Tests: `OpportunityIT`, `ResearchIT`, `MentorshipIT`,
+  authorization matrix extended, Playwright `opportunities.spec.ts`.
 - M4: `community` module (plain-text posts with intents/visibility, hashtags, one-level comments with placeholders,
   likes, reposts with commentary, bookmarks, trending tags, feed with visibility/blocking/suspension rules in SQL,
   reports with snapshots, moderator queue + resolve/remove/restore, audited). Frontend: feed at `/home` (composer,
@@ -62,17 +72,21 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
   `Start-Process wsl.exe -ArgumentList "-d Ubuntu -u root -- sleep 86400" -WindowStyle Hidden`.
 
 ## Git
-`main` holds the M1–M4 commits. `origin` is configured but the first push is blocked by permissions (see above);
+`main` holds the M1–M5 commits. `origin` is configured but the first push is blocked by permissions (see above);
 retry `git push -u origin main` once access is granted.
 
 ## Next exact task
-1. M5: `opportunity` module (lifecycle DRAFT→OPEN→CLOSED/EXPIRED/REMOVED, INTERNAL/EXTERNAL_URL/EMAIL methods,
-   applications with author decisions, skills via the profile catalogue, search, expiry job, moderator remove),
-   `research` module (projects, needed skills, applications → members, lead management), mentorship requests in
-   `networking` (availability from the profile), frontend `/opportunities`, `/research`, mentorship tab in
-   `/connections`, "Request mentorship" on profiles; ITs per module; Playwright publish→apply→close using a
-   dev-only fixtures endpoint (never in prod). Commit at the end.
-2. M6–M8 per `docs/planning/EXECUTION_PLAN.md`.
+1. M6 Communication: V006 (conversations with a direct-pair key, conversation_members with REQUEST/ACTIVE/
+   DECLINED/ARCHIVED states and last_read, messages with soft delete, notifications, notification_preferences);
+   `messaging` module (policy-based message requests, membership checks on every read, keyset history, read status,
+   blocking, own-message delete, MESSAGE reports with snapshot handled by the community report service and
+   moderator removal without browsing); `notification` module (in-app records + after-commit push and email
+   according to preferences; producers: connections, mentorship, comments/replies, applications, verification
+   decisions, content removal); STOMP WebSocket at `/ws` reusing the session cookie with origin check and CSRF on
+   CONNECT, user queues for messages and notifications; frontend `/messages` two-pane UI with requests, `/notifications`,
+   bell with unread count, `/settings/notifications`, "Message" on profiles; ITs for membership/IDOR, policy,
+   WebSocket auth rejection, notification fan-out. Commit at the end.
+2. M7–M8 per `docs/planning/EXECUTION_PLAN.md`.
 
 ## Known issues / decisions this session
 - Spring Boot 4.1: use `spring.session.data.redis.repository-type=indexed` (old `spring.session.redis.*` keys are ignored).

@@ -55,6 +55,23 @@ instructions. Precedence: owner instructions → assessment decisions → propos
   same item. Member reports route to member actions (warn, suspend). Reporters learn only that moderators will review.
 - D-34 Abuse limits per member: 20 posts, 60 comments and 20 reports per hour (Redis).
 
+## Opportunities, research and mentorship (business rules D-35..D-39, decided 30 Oct 2026)
+- D-35 Opportunities are DRAFT until published; OPEN listings expire automatically after their deadline (nightly job,
+  and the listing already disappears from search once the deadline passes); authors close/reopen; moderators remove
+  and restore with an audited reason. Only INTERNAL listings take applications on the platform; EXTERNAL_URL and EMAIL
+  listings show the link or address. Authors cannot apply to their own listing.
+- D-36 One application per member and listing; withdrawing and re-applying is allowed while the listing is open.
+  Authors see applicants and set REVIEWED/SHORTLISTED/ACCEPTED/REJECTED; applicants see their own status only.
+  CV uploads are deferred (cover note only) until the document pipeline is extended for member files.
+- D-37 Research projects have one lead (the creator). The lead accepts or declines applications, removes members and
+  sets the status; members may leave; the lead cannot leave. Applications are only possible while the project is
+  PROPOSED/ACTIVE and recruiting.
+- D-38 Mentorship requests need the mentor to advertise availability on their profile (visible to the requester);
+  one live request per mentee/mentor pair; the mentor accepts or declines, either party completes an accepted
+  mentorship, the mentee cancels a pending one. Completed mentorships are the source for M7 impact records.
+- D-39 Listings and projects by suspended/deactivated members, or between members who block each other, are hidden.
+  Skills on listings and projects come from the shared catalogue (members may add new ones).
+
 ## Modules
 1. Identity & onboarding: register, login, logout, email verification, password reset, sessions, MFA (TOTP + recovery
    codes), rate limiting, session revocation.

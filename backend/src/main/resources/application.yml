@@ -106,6 +106,9 @@ app:
   bootstrap:
     # First account registering with this email becomes SUPER_ADMIN (while no SUPER_ADMIN exists). Clear afterwards.
     super-admin-email: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:}
+  e2e-fixtures:
+    # Dev-only endpoint that creates verified test members for Playwright. Refused in production.
+    enabled: ${E2E_FIXTURES_ENABLED:false}
 
 storage:
   endpoint: ${STORAGE_ENDPOINT:http://localhost:${STORAGE_PORT:9000}}

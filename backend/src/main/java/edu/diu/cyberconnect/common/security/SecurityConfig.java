@@ -38,6 +38,7 @@ public class SecurityConfig {
             "/api/v1/auth/verify-email",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
+            "/api/v1/dev/**",
             "/api/v1/public/**",
             "/actuator/health",
             "/actuator/health/**",

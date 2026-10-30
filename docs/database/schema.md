@@ -33,7 +33,8 @@ Extensions: `pg_trgm`.
 
 Integrity rules covered so far: unique normalised email; unique user–affiliation pair; one active submission per
 affiliation; one appeal per submission; one live connection row per member pair; one open report per reporter and
-target; audit/review/access-log/moderation tables append-only.
+target; one application per opportunity and applicant; one pending research application and one live mentorship
+request per pair; audit/review/access-log/moderation tables append-only.
 
 ## V003 — profiles and networking (M3)
 | Table | Purpose | Notes |
@@ -56,6 +57,15 @@ target; audit/review/access-log/moderation tables append-only.
 | `hashtags`, `post_hashtags` | lower-cased tags extracted from bodies (≤ 10 per post) | `tag` unique, lowercase CHECK |
 | `reports` | member reports on POST/COMMENT/USER (MESSAGE reserved for M6) | `content_snapshot` at report time, `target_owner_id`, status OPEN/RESOLVED/DISMISSED, `resolution` CONTENT_REMOVED/NO_ACTION/DISMISSED; **partial unique index: one OPEN report per reporter and target** |
 
-Planned (M5+): mentorship_requests, opportunities, opportunity_skills, applications, research_projects,
-research_members, research_applications, conversations, conversation_members, messages, notifications,
-notification_preferences, impact_records, impact_confirmations.
+## V005 — opportunities, research, mentorship (M5)
+| Table | Purpose | Notes |
+|---|---|---|
+| `opportunities` | listings | `type` CHECK (6 types, no MENTORSHIP per D-10), `location_type`, `status` DRAFT/OPEN/CLOSED/EXPIRED/REMOVED, `application_method` INTERNAL/EXTERNAL_URL/EMAIL with CHECKs that the matching target is present and URLs are http(s), `deadline`, `application_count` (server-maintained), removal columns, generated `search_vector` |
+| `opportunity_skills` | needed skills from the shared `skills` catalogue | PK (opportunity_id, skill_id) |
+| `applications` | internal applications | UNIQUE (opportunity_id, applicant_id); status SUBMITTED/REVIEWED/SHORTLISTED/ACCEPTED/REJECTED/WITHDRAWN; `cover_note` |
+| `research_projects` | research hub projects | `status` PROPOSED/ACTIVE/COMPLETED/ARCHIVED/REMOVED, `looking_for_members`, `member_count`, dates, removal columns, `search_vector` |
+| `research_project_skills`, `research_members` (role LEAD/MEMBER), `research_applications` | collaboration | **partial unique: one PENDING application per project and applicant** |
+| `mentorship_requests` | mentee → mentor requests | status PENDING/ACCEPTED/DECLINED/COMPLETED/CANCELLED, topic, message, response note; not-self CHECK; **partial unique: one live request per pair** |
+
+Planned (M6+): conversations, conversation_members, messages, notifications, notification_preferences,
+impact_records, impact_confirmations.

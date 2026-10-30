@@ -44,6 +44,13 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
 `REPOST_NOT_ALLOWED`, `SELF_REPORT`, `ALREADY_REPORTED`, `UNSUPPORTED_TARGET`, `REPORT_NOT_FOUND`, `REPORT_CLOSED`,
 `NOT_CONTENT`, `POST_DELETED`, `COMMENT_DELETED`.
 
+## Problem codes (M5)
+`OPPORTUNITY_NOT_FOUND`, `OPPORTUNITY_NOT_EDITABLE`, `OPPORTUNITY_NOT_PUBLISHABLE`, `OPPORTUNITY_NOT_OPEN`,
+`OPPORTUNITY_NOT_DRAFT`, `APPLICATION_URL_REQUIRED`, `APPLICATION_EMAIL_REQUIRED`, `DEADLINE_PASSED`, `OWN_OPPORTUNITY`,
+`EXTERNAL_APPLICATION`, `ALREADY_APPLIED`, `APPLICATION_NOT_FOUND`, `INVALID_DECISION`, `PROJECT_NOT_FOUND`,
+`PROJECT_REMOVED`, `ILLEGAL_STATUS`, `ALREADY_MEMBER`, `NOT_RECRUITING`, `NOT_MEMBER`, `LEAD_CANNOT_LEAVE`,
+`SELF_MENTORSHIP`, `MENTOR_UNAVAILABLE`, `ALREADY_MENTORING`, `REQUEST_NOT_PENDING`, `NOT_ACTIVE`.
+
 ## Endpoint map (M2)
 - Auth: `POST /auth/register` (202 always), `POST /auth/login` → `{mfaRequired, user}`, `POST /auth/login/mfa`,
   `POST /auth/logout`, `GET /auth/me`, `POST /auth/verify-email`, `POST /auth/resend-verification`,
@@ -89,3 +96,21 @@ Step-up: approve/reject/decide, document viewing, role changes, suspensions, set
   (snapshot + current state), `POST …/{id}/resolve` (`{resolution: CONTENT_REMOVED|NO_ACTION|DISMISSED, note?}`;
   removal also settles other open reports on the same item), `GET /moderation/posts/{id}`,
   `POST /moderation/posts/{id}/remove|restore`, `POST /moderation/comments/{id}/remove|restore` (audited).
+
+## Endpoint map (M5, verified members only)
+- Opportunities: `GET /opportunities` (q, type, locationType, skill, author; OPEN, deadline not past, author verified
+  and not blocked), `GET /opportunities/mine`, `GET /opportunities/applications` (own), `POST /opportunities`
+  (`{type, title, organization, locationType, location?, description, compensation?, deadline?, applicationMethod,
+  applicationUrl?, applicationEmail?, skills[], publish}`; 10/day), `GET/PUT /opportunities/{id}`,
+  `DELETE /opportunities/{id}` (drafts only), `POST …/publish|close`, `POST …/apply` (`{coverNote?}`, INTERNAL only,
+  30/day), `DELETE …/apply` (withdraw), `GET …/applicants` (author), `POST …/applicants/{applicationId}/decide`
+  (`{status: REVIEWED|SHORTLISTED|ACCEPTED|REJECTED}`). Moderation: `GET/POST /moderation/opportunities/{id}[/remove|/restore]`.
+- Research: `GET /research` (q, status, skill, lookingForMembers, mine), `GET /research/applications`,
+  `POST /research` (`{title, summary, lookingForMembers, startDate?, endDate?, skills[]}`), `GET/PUT /research/{id}`,
+  `POST …/status` (`{status}`), `POST …/apply` (`{message?}`), `DELETE …/apply`, `POST …/applications/{id}/accept|decline`
+  (lead), `DELETE …/members/{userId}` (lead), `POST …/leave`. Moderation: `GET/POST /moderation/research/{id}[/remove|/restore]`.
+- Mentorship: `GET /mentorship/requests?role=mentee|mentor&status`, `GET …/summary`, `POST /mentorship/requests`
+  (`{mentorId, topic, message}`; mentor must advertise availability; 10/day), `GET …/{id}`, `POST …/{id}/accept|decline`
+  (`{note?}`, mentor), `POST …/{id}/complete` (either party), `DELETE …/{id}` (mentee, pending only).
+- Dev only (`E2E_FIXTURES_ENABLED=true`, never in production): `POST /dev/fixtures/verified-member`
+  (`{prefix?, affiliationType?, fullName?}` → `{userId, email, password}`) for Playwright.

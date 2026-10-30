@@ -22,3 +22,8 @@ document streaming headers, access log and purge), `ClamAvMalwareScannerTest` (p
 (opt-in with `CLAMAV_IT=true`, real engine + EICAR string).
 
 Open items for M8: watermarking the streamed image with the reviewer id, and key rotation tooling.
+
+## Test fixtures (development only)
+`POST /api/v1/dev/fixtures/verified-member` creates already-verified members for Playwright. The controller and
+service exist only outside the `prod` profile and only when `E2E_FIXTURES_ENABLED=true`; `E2eFixturesGuard` refuses to
+start a production build with the flag set. The endpoint never touches documents or real accounts.

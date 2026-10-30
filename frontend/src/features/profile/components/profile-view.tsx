@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AFFILIATION_LABELS } from "@/features/auth/types";
 import { AuthorPosts } from "@/features/community/components/author-posts";
 import { ConnectButton } from "@/features/networking/components/connect-button";
+import { RequestMentorshipButton } from "@/features/networking/components/mentorship";
 import { isApiError } from "@/lib/api/client";
 import { formatDate } from "@/lib/api/types";
 import { useMemberProfile } from "../hooks";
@@ -58,7 +59,10 @@ function ProfileBody({ profile }: { profile: ProfileView }) {
             <div><dd>Member since {formatDate(profile.memberSince)}</dd></div>
           </dl>
         </div>
-        <ConnectButton userId={profile.userId} relationship={profile.relationship} />
+        <div className="flex flex-col items-start gap-2">
+          <ConnectButton userId={profile.userId} relationship={profile.relationship} />
+          {profile.mentorAvailable && !profile.relationship.self ? <RequestMentorshipButton mentorId={profile.userId} mentorName={profile.displayName} /> : null}
+        </div>
       </header>
 
       {profile.restricted ? (

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MemberCardItem } from "@/features/profile/components/member-card";
+import { MentorshipPanel } from "./mentorship";
 import { formatDate } from "@/lib/api/types";
 import {
   useBlocks,
@@ -32,11 +33,13 @@ export function Connections() {
           <TabsTrigger value="incoming">Requests{summary && summary.pendingIncoming > 0 ? ` (${summary.pendingIncoming})` : ""}</TabsTrigger>
           <TabsTrigger value="outgoing">Sent{summary && summary.pendingOutgoing > 0 ? ` (${summary.pendingOutgoing})` : ""}</TabsTrigger>
           <TabsTrigger value="blocked">Blocked{summary && summary.blocked > 0 ? ` (${summary.blocked})` : ""}</TabsTrigger>
+          <TabsTrigger value="mentorship">Mentorship</TabsTrigger>
         </TabsList>
         <TabsContent value="connections"><ConnectionList /></TabsContent>
         <TabsContent value="incoming"><RequestList direction="incoming" /></TabsContent>
         <TabsContent value="outgoing"><RequestList direction="outgoing" /></TabsContent>
         <TabsContent value="blocked"><BlockedList /></TabsContent>
+        <TabsContent value="mentorship"><MentorshipPanel /></TabsContent>
       </Tabs>
     </div>
   );

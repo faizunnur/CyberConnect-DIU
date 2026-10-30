@@ -119,6 +119,8 @@ Implementation notes that are easy to get wrong:
 - `BOOTSTRAP_SUPER_ADMIN_EMAIL` promotes the first matching account to SUPER_ADMIN/ADMIN/MODERATOR (audited).
 - Spring Data derived queries do not support `NullsLast`; use `@Query` with `order by … nulls last`.
 - Record components named like a static factory (`self()`) clash; name factories `ofSelf()` etc.
+- A bulk `@Modifying(clearAutomatically = true)` query detaches entities loaded before it: do entity mutations and
+  `saveAndFlush` first, run the bulk statement last.
 - The Ubuntu WSL distro (fallback Docker engine) stops seconds after the last `wsl` session ends; keep a hidden
   `wsl -d Ubuntu -u root -- sleep 86400` process running while using the Compose stack.
 
@@ -126,7 +128,7 @@ Implementation notes that are easy to get wrong:
 ADR-0001 modular monolith (ports for inverse module dependencies, see ADR-0008 addendum) · ADR-0002 Redis sessions · ADR-0003 nginx same-origin routing · ADR-0004 S3 storage
 abstraction (RustFS locally; MinIO is discontinued) · ADR-0005 PostgreSQL · ADR-0006 verification/affiliation state
 machine · ADR-0007 document encryption and private access · ADR-0008 ArchUnit module boundaries.
-Business-rule decisions D-01..D-34 are recorded in `docs/requirements/product-requirements.md`.
+Business-rule decisions D-01..D-39 are recorded in `docs/requirements/product-requirements.md`.
 
 ## 16. Prohibited shortcuts
 No plaintext passwords; no tokens in localStorage; no frontend-only authorization; no public/presigned document URLs;
