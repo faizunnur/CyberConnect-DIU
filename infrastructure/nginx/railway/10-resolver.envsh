@@ -1,0 +1,13 @@
+#!/bin/sh
+# Sourced by the nginx image entrypoint (files named *.envsh in /docker-entrypoint.d) before the templates are
+# rendered. Exposes the container's DNS server (Railway's private DNS) as RESOLVER for the `resolver` directive
+# and fills the defaults for the upstream hostnames and the listening port.
+ns=$(awk '/^nameserver/ { print $2; exit }' /etc/resolv.conf)
+case "$ns" in
+  *:*) ns="[$ns]" ;;   # nginx wants IPv6 resolver addresses in brackets
+esac
+export RESOLVER="${RESOLVER:-${ns:-127.0.0.11}}"
+export BACKEND_HOST="${BACKEND_HOST:-backend.railway.internal}"
+export FRONTEND_HOST="${FRONTEND_HOST:-frontend.railway.internal}"
+export PORT="${PORT:-8080}"
+echo "edge: listening on :$PORT, backend=$BACKEND_HOST frontend=$FRONTEND_HOST resolver=$RESOLVER"

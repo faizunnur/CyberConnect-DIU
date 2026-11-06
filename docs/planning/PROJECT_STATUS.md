@@ -1,6 +1,6 @@
 # Project status
 
-Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
+Updated: 7 Nov 2026 (session 2). Read `CLAUDE.md` first.
 
 ## Milestones
 | Milestone | State |
@@ -95,9 +95,9 @@ Updated: 30 Oct 2026 (session 1, autonomous mode). Read `CLAUDE.md` first.
 retry `git push -u origin main` once access is granted.
 
 ## Next exact task (all milestones delivered; remaining items need the owner)
-1. Push `main` once `faizunRBAI` has write access to `faizunnur/CyberConnect-DIU` (or a credential for `faizunnur`
-   is stored): `git push -u origin main`.
-2. After 1 Nov 2026 re-enable `push`/`pull_request` triggers in `.github/workflows/*.yml` and run the Security
+1. `main` is pushed to `faizunnur/CyberConnect-DIU` (7 Nov 2026). Deploy on Railway with `docs/operations/railway.md`
+   or on a VPS with `docs/operations/deployment.md`.
+2. Re-enable `push`/`pull_request` triggers in `.github/workflows/*.yml` and run the Security
    workflow; fix high/critical findings.
 3. Go-live prerequisites in `docs/security/checklist.md` (institutional approval for document collection, restore
    drill, penetration test, legal review of privacy notice/terms), then follow `docs/operations/deployment.md`.

@@ -111,6 +111,8 @@ meaningful units. Never force-push. Never commit `.env`, secrets or real documen
 Production runs with `docker-compose.prod.yml` (`scripts/deploy.sh <version>`); see `docs/operations/`. Three
 start-up guards refuse development settings in production (`ScannerProductionGuard`, `E2eFixturesGuard`,
 `ProductionConfigGuard`). Management endpoints (health, prometheus) live on port 8081, internal only.
+Railway: `docs/operations/railway.md` (edge image in `infrastructure/nginx/railway/`; backend/frontend/edge are three
+services from this repo with root directories `/backend`, `/frontend`, `/infrastructure/nginx/railway`).
 
 ## 15. Current milestone
 See `docs/planning/PROJECT_STATUS.md` (kept current at the end of every working session).

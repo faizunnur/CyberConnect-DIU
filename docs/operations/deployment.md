@@ -36,9 +36,9 @@ Place `fullchain.pem` and `privkey.pem` in `infrastructure/nginx/certs/` (Let's 
 `docker compose ... exec nginx nginx -s reload` after each renewal).
 
 ## 4. Buckets
-Production does not auto-create buckets (`STORAGE_ENSURE_BUCKETS=false`). Create `verification-documents` and
-`member-media` once on the RustFS console (`docker compose ... exec storage` or the S3 API with the access keys),
-both private. Never expose port 9000/9001 publicly.
+Production does not auto-create buckets by default (`STORAGE_ENSURE_BUCKETS=false`). Create `verification-documents`
+and `member-media` once with the S3 API and the access keys (both private), or set `STORAGE_ENSURE_BUCKETS=true` for
+the first backend start only and switch it back afterwards. Never expose port 9000/9001 publicly.
 
 ## 5. First rollout
 ```
@@ -64,5 +64,9 @@ sh scripts/deploy.sh v1.1.0
 Rollback: `APP_VERSION=v1.0.0 docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile full --profile scanning up -d`
 (migrations are forward-only; restore the database from the pre-deploy backup if a migration must be undone).
 
-## 8. Not in scope
+## 8. Railway alternative
+`docs/operations/railway.md` deploys the same topology on Railway (one service per container, nginx edge as the only
+public service, managed PostgreSQL/Redis).
+
+## 9. Not in scope
 Kubernetes, Minikube, Kafka, Elasticsearch and multi-host setups are deliberately out of scope (ADR-0001).

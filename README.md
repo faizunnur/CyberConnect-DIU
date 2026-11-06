@@ -48,7 +48,8 @@ Full-stack Playwright flows (onboarding, opportunities, messaging) need `E2E_FIX
 (dev only; refused in production). The accessibility spec (axe-core, WCAG 2.2 AA) runs against the public pages.
 
 ## Operations
-`docs/operations/` holds the VPS deployment guide, runbook, backup/restore procedure and monitoring notes;
+`docs/operations/` holds the VPS deployment guide, the Railway deployment guide (`railway.md`), runbook,
+backup/restore procedure and monitoring notes;
 `docs/security/checklist.md` tracks the security controls and the go-live prerequisites.
 
 ## Resource requirements (measured on an i5-12450HX, 16 GB)
@@ -65,7 +66,7 @@ Disk: images ≈ 2.5 GB, Maven repo ≈ 1 GB, `node_modules` ≈ 0.6 GB.
 ```
 backend/        Spring Boot modular monolith (package-by-feature, see CLAUDE.md §5)
 frontend/       Next.js App Router application
-infrastructure/ nginx config, PostgreSQL role init, (monitoring/backup in M8)
+infrastructure/ nginx configs (dev, VPS prod, Railway edge image), PostgreSQL role init
 docs/           requirements, planning status, architecture + ADRs, database, API
 scripts/        secret generation helpers
 docker-compose.yml / docker-compose.override.yml (dev) / docker-compose.prod.yml (M8)

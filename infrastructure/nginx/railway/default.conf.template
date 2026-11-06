@@ -1,0 +1,140 @@
+# CyberConnect DIU edge for Railway: the only public service, in front of the private backend and frontend.
+# TLS terminates at Railway's edge, so this listens on plain HTTP on $PORT. The nginx image renders this template
+# with envsubst at start-up (PORT, BACKEND_HOST, FRONTEND_HOST, RESOLVER come from 10-resolver.envsh / variables).
+# Same routing contract as prod.conf: /api/* and /ws -> Spring Boot, everything else -> Next.js, /actuator never.
+
+# Railway's proxy is the only client that can reach this container, so take the client address from the rightmost
+# X-Forwarded-For entry (the one Railway appended). Rate limits and the backend audit trail then see real clients.
+set_real_ip_from 0.0.0.0/0;
+set_real_ip_from ::/0;
+real_ip_header X-Forwarded-For;
+real_ip_recursive off;
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+# What the browser used (Railway sets X-Forwarded-Proto); the backend builds nothing from it but logs it.
+map $http_x_forwarded_proto $fwd_proto {
+    default https;
+    http    http;
+}
+map $fwd_proto $fwd_port {
+    default 443;
+    http    80;
+}
+
+# Abuse limits in front of the application limits (Redis). Keys on the real client address.
+limit_req_zone $binary_remote_addr zone=auth:10m rate=10r/m;
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+limit_conn_zone $binary_remote_addr zone=perip:10m;
+
+server {
+    listen ${PORT};
+    listen [::]:${PORT};
+    server_name _;
+    server_tokens off;
+    client_max_body_size 12m;
+    limit_conn perip 50;
+
+    # Private-network addresses change on every redeploy of a service: resolve per request with a short TTL
+    # (variables in proxy_pass force run-time resolution instead of start-up resolution).
+    resolver ${RESOLVER} valid=5s ipv6=on;
+    set $backend  http://${BACKEND_HOST}:8080;
+    set $frontend http://${FRONTEND_HOST}:3000;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    # Next.js emits inline bootstrap scripts; nonce-based CSP is a tracked hardening item (docs/security/checklist.md).
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+    gzip_min_length 1024;
+
+    # Authentication endpoints: strict per-address limit on top of the Redis limits.
+    location ~ ^/api/v1/auth/(login|register|forgot-password|reset-password)$ {
+        limit_req zone=auth burst=10 nodelay;
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $fwd_port;
+        proxy_read_timeout 30s;
+        proxy_buffering off;
+    }
+
+    location /api/ {
+        limit_req zone=api burst=40 nodelay;
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $fwd_port;
+        proxy_read_timeout 60s;
+        proxy_buffering off;
+    }
+
+    # Actuator is never exposed through the edge (management port 8081 stays inside the private network).
+    location /actuator/ {
+        return 404;
+    }
+
+    location /ws {
+        proxy_pass $backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $fwd_port;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    location /_next/static/ {
+        proxy_pass $frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        add_header X-Content-Type-Options nosniff always;
+    }
+
+    # Railway health check target (proxied to the Next.js /healthz route).
+    location /healthz {
+        proxy_pass $frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        access_log off;
+    }
+
+    location / {
+        proxy_pass $frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $fwd_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $fwd_port;
+    }
+}

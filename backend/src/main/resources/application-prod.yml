@@ -6,7 +6,9 @@ server:
         secure: true
 
 storage:
-  ensure-buckets: false
+  # Operators provision the two private buckets; set STORAGE_ENSURE_BUCKETS=true for one start-up where no
+  # console exists (Railway), then back to false so the runtime key never needs CreateBucket again.
+  ensure-buckets: ${STORAGE_ENSURE_BUCKETS:false}
 
 springdoc:
   api-docs:
