@@ -8,6 +8,8 @@
 # directly; it behaves exactly like `docker compose`.
 set -eu
 cd "$(dirname "$0")/.."
+# The standalone plugin binary panics in Compose's "bake" build path; the classic builder works.
+export COMPOSE_BAKE="${COMPOSE_BAKE:-false}"
 while [ $# -gt 0 ] && [ "$1" != "--" ]; do
   export "$1"
   shift

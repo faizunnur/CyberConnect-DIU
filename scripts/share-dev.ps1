@@ -186,8 +186,9 @@ if (-not (Test-Path $cloudflared)) {
 }
 
 # ---- stack -----------------------------------------------------------------------------------------------------
-Write-Host 'Starting the full stack (postgres, redis, storage, mailpit, backend, frontend, nginx) ...' -ForegroundColor Cyan
-Invoke-Compose @('--profile','full','up','-d')
+Write-Host 'Building changed code and starting the full stack (postgres, redis, storage, mailpit, backend, frontend, nginx) ...' -ForegroundColor Cyan
+# --build keeps the containers in step with the checked-out code (cached layers make it quick when nothing changed).
+Invoke-Compose @('--profile','full','up','-d','--build')
 if (-not (Wait-Backend 180)) { throw "Backend did not become healthy on http://localhost:$Port within 3 minutes." }
 
 # ---- tunnel ----------------------------------------------------------------------------------------------------

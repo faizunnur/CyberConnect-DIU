@@ -5,7 +5,7 @@ people outside your network can try it while it runs on your computer. It is for
 the address changes every start and dies with the laptop.
 
 ## How it works
-1. Starts the Docker stack (`docker compose --profile full up -d`) on the engine that already holds this project's
+1. Builds changed code and starts the Docker stack (`docker compose --profile full up -d --build`) on the engine that already holds this project's
    containers and volumes; otherwise Docker Desktop when its engine and Compose plugin work, else the Ubuntu WSL
    engine (`-Engine wsl|desktop` forces one). In WSL it runs Compose through `scripts/compose-wsl.sh`, which skips the
    broken Compose plugin that Docker Desktop's WSL integration can install, and keeps a hidden WSL session alive so
