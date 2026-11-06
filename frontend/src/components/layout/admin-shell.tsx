@@ -11,6 +11,7 @@ import { UserMenu } from "@/features/auth/components/user-menu";
 import { useMe } from "@/features/auth/hooks";
 import { hasAuthority } from "@/features/auth/routing";
 import { cn } from "@/lib/utils";
+import { shellContainer } from "./container";
 
 interface Item {
   href: string;
@@ -37,7 +38,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col">
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4">
+        <div className={cn(shellContainer, "flex h-14 items-center justify-between gap-4")}>
           <div className="flex items-center gap-3">
             <Link href="/home" className="flex items-center gap-2" aria-label="Back to community">
               <Image src="/brand/csc-diu-logo.png" alt="" width={32} height={32} className="size-8 rounded-md" />
@@ -52,7 +53,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className={cn(shellContainer, "grid flex-1 gap-6 py-6 md:grid-cols-[200px_minmax(0,1fr)] lg:grid-cols-[220px_minmax(0,1fr)] xl:gap-8 2xl:grid-cols-[250px_minmax(0,1fr)]")}>
         <nav aria-label="Administration">
           <ul className="flex gap-1 overflow-x-auto md:sticky md:top-20 md:flex-col">
             {visible.map((item) => {

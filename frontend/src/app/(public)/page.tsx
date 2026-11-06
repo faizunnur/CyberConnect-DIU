@@ -93,7 +93,7 @@ export default function LandingPage() {
     <>
       {/* Hero */}
       <section className="border-b bg-gradient-to-b from-card to-background">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 md:grid-cols-[1.2fr_1fr] md:items-center md:py-24">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:px-8 md:grid-cols-[1.2fr_1fr] md:items-center md:py-24">
           <div>
             <Badge variant="secondary" className="mb-4">
               Private · Verified · DIU cybersecurity
@@ -156,7 +156,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
+      <section id="features" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-3xl font-semibold">What members do here</h2>
           <p className="mt-3 text-muted-foreground">
@@ -180,7 +180,7 @@ export default function LandingPage() {
 
       {/* How it works */}
       <section id="how-it-works" className="scroll-mt-20 border-y bg-card">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <h2 className="text-3xl font-semibold">How verification works</h2>
             <p className="mt-3 text-muted-foreground">
@@ -205,7 +205,7 @@ export default function LandingPage() {
       </section>
 
       {/* Eligibility */}
-      <section id="eligibility" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
+      <section id="eligibility" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8">
         <div className="max-w-2xl">
           <h2 className="text-3xl font-semibold">Who can join</h2>
           <p className="mt-3 text-muted-foreground">
@@ -231,7 +231,7 @@ export default function LandingPage() {
 
       {/* Call to action */}
       <section className="bg-navy text-navy-foreground">
-        <div className="mx-auto flex max-w-6xl flex-col items-start gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex max-w-7xl flex-col items-start gap-6 px-4 py-14 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-2xl font-semibold">Ready to join the verified community?</h2>
             <p className="mt-2 max-w-xl text-sm text-navy-foreground/80">
