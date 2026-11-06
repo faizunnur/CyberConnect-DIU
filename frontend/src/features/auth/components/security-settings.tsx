@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Copy, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FormError, FormSuccess } from "@/components/forms/form-alert";
@@ -122,13 +123,25 @@ function MfaCard({ enabled, privileged }: { enabled: boolean; privileged: boolea
             }}
           >
             <p className="text-sm">
-              Add this account to your authenticator app, then enter the 6-digit code it shows.
+              Scan the QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password…),
+              then enter the 6-digit code it shows.
             </p>
+            {/* Rendered locally from the otpauth URI: the secret never leaves the page. White background so phone
+                cameras can read it in dark mode too. */}
+            <div className="inline-block rounded-lg border bg-white p-3">
+              <QRCodeSVG
+                value={enrolment.otpauthUri}
+                size={192}
+                level="M"
+                marginSize={1}
+                title="QR code for your authenticator app"
+              />
+            </div>
             <div className="rounded-lg border bg-muted/40 p-3 text-sm">
-              <p className="text-xs text-muted-foreground">Secret key (type it manually or use the link below)</p>
+              <p className="text-xs text-muted-foreground">Can&apos;t scan? Type this secret key into the app instead</p>
               <p className="mt-1 break-all font-mono">{enrolment.secret}</p>
               <a href={enrolment.otpauthUri} className="mt-2 inline-block text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
-                Open in authenticator app
+                Open in authenticator app (on this phone)
               </a>
             </div>
             <FormField id="mfa-code" label="6-digit code" required>
