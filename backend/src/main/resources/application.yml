@@ -57,6 +57,11 @@ spring:
     properties:
       mail.smtp.auth: ${SMTP_AUTH:false}
       mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      # Implicit TLS (port 465, "SSL/TLS" in cPanel); leave false for STARTTLS on 587 or Mailpit on 1025.
+      mail.smtp.ssl.enable: ${SMTP_SSL:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   mvc:
     problemdetails:
       enabled: true

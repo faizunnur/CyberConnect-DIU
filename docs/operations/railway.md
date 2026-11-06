@@ -1,210 +1,279 @@
-# Railway deployment guide
+# Deploy CyberConnect DIU on Railway — step by step
 
-Railway runs the same topology as the VPS (ADR-0009) with one Railway service per container. Only the nginx edge gets a
-public domain; PostgreSQL, Redis, object storage, ClamAV, the backend and the frontend stay on Railway's private
-network (`<service>.railway.internal`). Session cookies, CSRF and the WebSocket origin check all rely on that single
-origin, so do **not** give the backend or the frontend a public domain.
+Follow the steps in order. Each step tells you exactly where to click and what to type. Expect about one hour the
+first time. When something fails, jump to the *Troubleshooting* section at the end.
+
+## What you get
+Seven Railway services in one project. Only **edge** is reachable from the internet; everything else talks over
+Railway's private network. That single public origin is what keeps the login cookies, CSRF protection and the
+WebSocket working, so never add a public domain to the backend or the frontend.
 
 ```
-browser ──https──> Railway edge ──> edge (nginx, public)
-                                      ├── /api/*, /ws ──> backend.railway.internal:8080 (Spring Boot)
-                                      └── /*          ──> frontend.railway.internal:3000 (Next.js)
-backend ──> Postgres, Redis (Railway managed) · storage (RustFS) · clamav
+internet ──> edge (nginx)  ──> /api/* and /ws ──> backend (Spring Boot)
+                           └─> everything else ─> frontend (Next.js)
+backend ──> Postgres · Redis · storage (RustFS, files) · clamav (virus scanner)
 ```
 
-The start-up guards still apply: the backend refuses to start in production without `SCANNER_TYPE=clamav`, an https
-base URL, a Secure cookie, API docs off, a real SMTP host and `E2E_FIXTURES_ENABLED=false`.
+## Step 0 — Prepare these values first
+You will paste them into Railway later. Write them down in a password manager, not in the repository.
 
-## 0. Before you start
-- A Railway account on the **Hobby plan or higher**. ClamAV alone needs about 3 GB of RAM, which is more than the
-  free tier allows; expect ClamAV to be the largest line on the bill.
-- The GitHub repository connected to Railway (Railway → New → GitHub repo → authorise `faizunnur/CyberConnect-DIU`).
-- An SMTP relay with credentials (Resend, Brevo, Amazon SES, Mailgun, …). Mailpit is development-only.
-- Secrets generated locally once, then pasted into Railway. On the laptop:
-  ```
-  sh scripts/gen-secrets.sh      # or: powershell scripts/gen-secrets.ps1
-  ```
-  The generated `.env` is only a source of random values here; copy `DB_APP_PASSWORD`, `REDIS_PASSWORD`,
-  `STORAGE_SECRET_KEY` and `DOCUMENT_ENCRYPTION_KEY` from it. Keep a copy of `DOCUMENT_ENCRYPTION_KEY` in a password
-  manager: it is the only key that can decrypt stored identity documents.
-- Optional: the Railway CLI (`npm i -g @railway/cli`, `railway login`, `railway link`) for `railway connect Postgres`
-  and `railway logs`.
+| Name | How to get it |
+|---|---|
+| `DB_APP_PASSWORD` | random secret (see below) |
+| `STORAGE_SECRET_KEY` | random secret |
+| `DOCUMENT_ENCRYPTION_KEY` | base64 of 32 random bytes (see below). **Back this one up: it is the only key that can decrypt uploaded identity documents.** |
+| Mailbox password | the password of `cyberconnectdiu@hepttech.com` from cPanel |
+| First administrator email | the email address you will register with to become SUPER_ADMIN |
 
-Create one project (for example `cyberconnect-diu`) and work in its `production` environment. Use the service names
-below exactly; the private hostnames and the `${{service.VAR}}` references depend on them.
-
-## 1. Postgres and Redis (Railway managed)
-1. Project canvas → **Create** → **Database** → **PostgreSQL**. Keep the service name `Postgres`.
-2. **Create** → **Database** → **Redis**. Keep the service name `Redis`.
-3. Leave both private (no TCP proxy). They expose `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` and
-   `REDISHOST`, `REDISPORT`, `REDISPASSWORD`, which the backend references.
-
-Create the least-privilege runtime role once (the managed instance only has the `postgres` superuser, which the
-migrations use as the owner). Open the Postgres service → **Data** → query editor, or `railway connect Postgres`, and
-run with your own password:
-```sql
-CREATE ROLE cyberconnect_app LOGIN PASSWORD 'paste-DB_APP_PASSWORD-here';
-GRANT CONNECT ON DATABASE railway TO cyberconnect_app;
-GRANT USAGE ON SCHEMA public TO cyberconnect_app;
+Generate the random values on your laptop (PowerShell, from the repository folder):
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/gen-secrets.ps1   # writes .env with random values (skips if .env exists)
+notepad .env                                                       # copy DB_APP_PASSWORD, STORAGE_SECRET_KEY, DOCUMENT_ENCRYPTION_KEY
 ```
-Flyway grants the table privileges to that role during the first backend start (`${app_role}` placeholder).
+If `.env` already exists, generate the three values directly:
+```powershell
+$b = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)   # DOCUMENT_ENCRYPTION_KEY
+$b = New-Object byte[] 24; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); ([Convert]::ToBase64String($b) -replace '[+/=]','')   # run twice: DB_APP_PASSWORD, STORAGE_SECRET_KEY
+```
 
-## 2. storage (RustFS, S3 API)
-The application uses two private buckets through one key pair with path-style addressing, which is why it runs its own
-S3 server instead of Railway Buckets (per-bucket credentials, virtual-hosted URLs, public network only).
-
-1. **Create** → **Docker Image** → `rustfs/rustfs:1.0.4`. Name the service `storage`.
-2. **Settings → Volumes**: add a volume mounted at `/data` (the objects live there; size it for documents + photos).
-3. **Variables**:
+Email settings used throughout (from the cPanel "Secure SSL/TLS Settings" page):
 
 | Variable | Value |
 |---|---|
-| `RUSTFS_ACCESS_KEY` | `cyberconnect` |
-| `RUSTFS_SECRET_KEY` | the generated `STORAGE_SECRET_KEY` (mark it *sealed*) |
-| `RUSTFS_VOLUMES` | `/data` |
-| `RUSTFS_ADDRESS` | `:9000` |
-| `RUSTFS_CONSOLE_ENABLE` | `false` |
+| `SMTP_HOST` | `mail.hepttech.com` |
+| `SMTP_PORT` | `465` |
+| `SMTP_SSL` | `true` (port 465 is implicit TLS) |
+| `SMTP_STARTTLS` | `false` |
+| `SMTP_AUTH` | `true` |
+| `SMTP_USERNAME` | `cyberconnectdiu@hepttech.com` |
+| `SMTP_PASSWORD` | the mailbox password |
+| `MAIL_FROM` | `cyberconnectdiu@hepttech.com` (cPanel rejects a different sender) |
 
-No public domain, no TCP proxy. The buckets are created by the backend on its first start (step 5).
+You need a Railway account on the **Hobby plan or higher**: the virus scanner (ClamAV) needs about 3 GB of RAM and is
+mandatory in production. Connect GitHub to Railway once: Railway dashboard → account settings → *Integrations* →
+GitHub → allow access to `faizunnur/CyberConnect-DIU`.
 
-## 3. clamav
-1. **Create** → **Docker Image** → `clamav/clamav:1.4.6`. Name the service `clamav`.
-2. **Settings → Volumes**: mount a volume at `/var/lib/clamav` so the signature database survives redeploys.
-3. **Variables**: `CLAMAV_NO_MILTERD=true`.
-4. The first start downloads the signatures and takes several minutes; the backend's scanner health check waits for
-   port 3310. Expect about 2.5–3 GB of resident memory.
+## Step 1 — Create the project
+1. Dashboard → **New Project** → **Empty project**.
+2. Rename it (top-left project name) to `cyberconnect-diu`. The environment is `production`; keep it.
 
-## 4. backend
-1. **Create** → **GitHub Repo** → `faizunnur/CyberConnect-DIU`, branch `main`. Name the service `backend`.
-2. **Settings → Source**: Root Directory `/backend`. Railway builds `backend/Dockerfile` automatically.
-3. **Settings → Deploy**: Healthcheck Path `/api/v1/health`, Healthcheck Timeout `300` (Flyway runs on first start).
-   Restart policy *On failure*.
-4. **Settings → Networking**: no public domain.
-5. **Variables** (paste through the RAW editor; replace the angle-bracket values):
+## Step 2 — Add PostgreSQL
+1. On the project canvas click **Create** → **Database** → **Add PostgreSQL**.
+2. Wait until the service card shows a green status. Keep its name **Postgres**.
+3. Click the service → **Variables** tab: you will see `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`.
+   Do not change them; the backend will reference them.
 
-```
-SPRING_PROFILES_ACTIVE=prod
-APP_ENV=prod
-PORT=8080
-SERVER_PORT=8080
-MANAGEMENT_PORT=8081
-APP_BASE_URL=https://<edge public domain, filled in after step 6>
-SESSION_COOKIE_SECURE=true
-API_DOCS_ENABLED=false
-E2E_FIXTURES_ENABLED=false
+## Step 3 — Add Redis
+1. **Create** → **Database** → **Add Redis**. Keep its name **Redis**.
+2. Wait for green. Its variables `REDISHOST`, `REDISPORT`, `REDISPASSWORD` will be referenced later.
 
-DB_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
-DB_MIGRATOR_USER=${{Postgres.PGUSER}}
-DB_MIGRATOR_PASSWORD=${{Postgres.PGPASSWORD}}
-DB_APP_USER=cyberconnect_app
-DB_APP_PASSWORD=<the password used in the CREATE ROLE statement>
+## Step 4 — Create the application database user
+The managed database only has the `postgres` superuser. The app runs with a least-privilege user that you create once.
+1. Click the **Postgres** service → **Data** tab → open the query editor (icon at the top of the Data view).
+2. Paste, replacing the password with your `DB_APP_PASSWORD`, and run:
+   ```sql
+   CREATE ROLE cyberconnect_app LOGIN PASSWORD 'paste-DB_APP_PASSWORD-here';
+   GRANT CONNECT ON DATABASE railway TO cyberconnect_app;
+   GRANT USAGE ON SCHEMA public TO cyberconnect_app;
+   ```
+3. Expected result: `CREATE ROLE`, `GRANT`, `GRANT`. (If the Data tab has no query editor, install the Railway CLI with
+   `npm i -g @railway/cli`, run `railway login`, `railway link`, `railway connect Postgres`, and paste the SQL there.)
 
-REDIS_HOST=${{Redis.REDISHOST}}
-REDIS_PORT=${{Redis.REDISPORT}}
-REDIS_PASSWORD=${{Redis.REDISPASSWORD}}
+## Step 5 — Add the file storage (RustFS)
+1. **Create** → **Docker Image** → type `rustfs/rustfs:1.0.4` → **Deploy**.
+2. Click the new service → **Settings** → rename it **storage** (the name becomes its private hostname).
+3. **Settings** → **Volumes** → **Add volume** → mount path `/data`.
+4. **Variables** → **Raw Editor** → paste, replacing the secret:
+   ```
+   RUSTFS_ACCESS_KEY=cyberconnect
+   RUSTFS_SECRET_KEY=paste-STORAGE_SECRET_KEY-here
+   RUSTFS_VOLUMES=/data
+   RUSTFS_ADDRESS=:9000
+   RUSTFS_CONSOLE_ENABLE=false
+   ```
+   Click the eye icon next to `RUSTFS_SECRET_KEY` → **Seal** (hides it for good).
+5. **Deploy** the staged changes (button at the top). Do **not** add a public domain to this service.
 
-STORAGE_ENDPOINT=http://${{storage.RAILWAY_PRIVATE_DOMAIN}}:9000
-STORAGE_ACCESS_KEY=${{storage.RUSTFS_ACCESS_KEY}}
-STORAGE_SECRET_KEY=${{storage.RUSTFS_SECRET_KEY}}
-STORAGE_ENSURE_BUCKETS=true
+## Step 6 — Add the virus scanner (ClamAV)
+1. **Create** → **Docker Image** → `clamav/clamav:1.4.6` → **Deploy**.
+2. Rename the service **clamav**.
+3. **Settings** → **Volumes** → mount path `/var/lib/clamav` (keeps the downloaded signatures).
+4. **Variables**: `CLAMAV_NO_MILTERD` = `true`.
+5. Deploy. The first start downloads about 300 MB of signatures and takes 5–10 minutes; the log ends with
+   `clamd started` when it is ready. Memory use settles around 2.5–3 GB; that is normal.
 
-DOCUMENT_ENCRYPTION_KEY=<base64 of 32 random bytes from gen-secrets>
-DOCUMENT_ENCRYPTION_KEY_ID=k1
+## Step 7 — Add the backend
+1. **Create** → **GitHub Repo** → choose `faizunnur/CyberConnect-DIU` → **Add variables** is optional here; click
+   **Deploy** (the first build will fail until the variables exist; that is fine).
+2. Rename the service **backend**.
+3. **Settings** → **Source** → **Root Directory**: `/backend`. Railway now builds `backend/Dockerfile`.
+4. **Settings** → **Deploy**:
+   - Healthcheck Path: `/api/v1/health`
+   - Healthcheck Timeout: `300`
+   - Restart Policy: *On Failure*
+5. **Settings** → **Networking**: leave **Public Networking empty** (no domain).
+6. **Variables** → **Raw Editor** → paste the whole block. Replace every `<...>`; leave the `${{...}}` references
+   exactly as written (Railway fills them from the other services):
+   ```
+   SPRING_PROFILES_ACTIVE=prod
+   APP_ENV=prod
+   PORT=8080
+   SERVER_PORT=8080
+   MANAGEMENT_PORT=8081
+   APP_BASE_URL=https://placeholder.invalid
+   SESSION_COOKIE_SECURE=true
+   API_DOCS_ENABLED=false
+   E2E_FIXTURES_ENABLED=false
 
-SCANNER_TYPE=clamav
-CLAMAV_HOST=${{clamav.RAILWAY_PRIVATE_DOMAIN}}
-CLAMAV_PORT=3310
+   DB_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+   DB_MIGRATOR_USER=${{Postgres.PGUSER}}
+   DB_MIGRATOR_PASSWORD=${{Postgres.PGPASSWORD}}
+   DB_APP_USER=cyberconnect_app
+   DB_APP_PASSWORD=<DB_APP_PASSWORD from step 4>
 
-SMTP_HOST=<smtp.yourrelay.example>
-SMTP_PORT=587
-SMTP_USERNAME=<relay user>
-SMTP_PASSWORD=<relay password>
-SMTP_STARTTLS=true
-SMTP_AUTH=true
-MAIL_FROM=no-reply@<your domain>
+   REDIS_HOST=${{Redis.REDISHOST}}
+   REDIS_PORT=${{Redis.REDISPORT}}
+   REDIS_PASSWORD=${{Redis.REDISPASSWORD}}
 
-BOOTSTRAP_SUPER_ADMIN_EMAIL=<first administrator's email>
+   STORAGE_ENDPOINT=http://${{storage.RAILWAY_PRIVATE_DOMAIN}}:9000
+   STORAGE_ACCESS_KEY=${{storage.RUSTFS_ACCESS_KEY}}
+   STORAGE_SECRET_KEY=${{storage.RUSTFS_SECRET_KEY}}
+   STORAGE_ENSURE_BUCKETS=true
 
-JAVA_TOOL_OPTIONS=-Xmx1g -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom
-SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES=10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|[fF][cCdD][0-9a-fA-F]{2}:.*|[fF][eE]80:.*
-```
+   DOCUMENT_ENCRYPTION_KEY=<DOCUMENT_ENCRYPTION_KEY from step 0>
+   DOCUMENT_ENCRYPTION_KEY_ID=k1
 
-Mark `DB_APP_PASSWORD`, `DOCUMENT_ENCRYPTION_KEY` and `SMTP_PASSWORD` as sealed. Notes:
-- `STORAGE_ENSURE_BUCKETS=true` is for the **first start only**: the backend creates the private
-  `verification-documents` and `member-media` buckets on the RustFS service. Set it to `false` afterwards.
-- `SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES` lets Tomcat trust the edge's private address so `X-Forwarded-For` becomes
-  the client IP. Without it every user shares one rate-limit bucket and the audit trail records the edge address.
-- `BOOTSTRAP_SUPER_ADMIN_EMAIL`: clear it after that account has registered and enrolled MFA.
-- Memory: give the service at least 1.5 GB (Settings → Resources, or rely on the plan limit).
+   SCANNER_TYPE=clamav
+   CLAMAV_HOST=${{clamav.RAILWAY_PRIVATE_DOMAIN}}
+   CLAMAV_PORT=3310
 
-## 5. frontend
-1. **Create** → **GitHub Repo** → same repo, branch `main`. Name the service `frontend`.
-2. **Settings → Source**: Root Directory `/frontend` (builds `frontend/Dockerfile`).
-3. **Settings → Deploy**: Healthcheck Path `/healthz`.
-4. No public domain.
-5. **Variables**:
+   SMTP_HOST=mail.hepttech.com
+   SMTP_PORT=465
+   SMTP_SSL=true
+   SMTP_STARTTLS=false
+   SMTP_AUTH=true
+   SMTP_USERNAME=cyberconnectdiu@hepttech.com
+   SMTP_PASSWORD=<mailbox password>
+   MAIL_FROM=cyberconnectdiu@hepttech.com
 
-| Variable | Value | Why |
-|---|---|---|
-| `PORT` | `3000` | matches the edge upstream |
-| `HOSTNAME` | `::` | listen on IPv6 as well; Railway's private network is IPv6-first |
-| `NODE_ENV` | `production` | |
+   BOOTSTRAP_SUPER_ADMIN_EMAIL=<your admin email>
 
-Do not set `NEXT_PUBLIC_WS_URL` or `API_PROXY_TARGET`: in production the browser uses the same-origin `/api` and `/ws`.
+   JAVA_TOOL_OPTIONS=-Xmx1g -XX:+UseG1GC -XX:+ExitOnOutOfMemoryError -Djava.security.egd=file:/dev/./urandom
+   SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES=10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|::1|[fF][cCdD][0-9a-fA-F]{2}:.*|[fF][eE]80:.*
+   ```
+7. Seal `DB_APP_PASSWORD`, `DOCUMENT_ENCRYPTION_KEY` and `SMTP_PASSWORD` (eye icon → Seal).
+8. Do **not** deploy yet; `APP_BASE_URL` is fixed in Step 10.
 
-## 6. edge (nginx, the public service)
-1. **Create** → **GitHub Repo** → same repo. Name the service `edge`.
-2. **Settings → Source**: Root Directory `/infrastructure/nginx/railway` (builds the small nginx image there; it
-   renders `default.conf.template` at start-up and resolves the private hostnames per request).
-3. **Settings → Networking → Public Networking → Generate Domain**, target port `8080`. Later add your custom domain
-   (`+ Custom Domain`, then the CNAME/TXT records Railway shows).
-4. **Settings → Deploy**: Healthcheck Path `/healthz`.
-5. **Variables**:
+What the unusual variables do:
+- `STORAGE_ENSURE_BUCKETS=true` makes the backend create the two private file buckets on its first start. You switch
+  it to `false` in Step 12.
+- `SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES` tells the backend to trust the edge's private address, so rate limits and
+  the audit trail see the real visitor IP instead of the edge.
+- `BOOTSTRAP_SUPER_ADMIN_EMAIL` makes the first account registered with that email the super administrator.
 
-| Variable | Value |
+## Step 8 — Add the frontend
+1. **Create** → **GitHub Repo** → `faizunnur/CyberConnect-DIU` → **Deploy**.
+2. Rename the service **frontend**.
+3. **Settings** → **Source** → **Root Directory**: `/frontend`.
+4. **Settings** → **Deploy** → Healthcheck Path: `/healthz`.
+5. **Settings** → **Networking**: no public domain.
+6. **Variables** → Raw Editor:
+   ```
+   PORT=3000
+   HOSTNAME=::
+   NODE_ENV=production
+   ```
+   (`HOSTNAME=::` makes Next.js listen on IPv6 too, which Railway's private network uses.)
+7. Deploy.
+
+## Step 9 — Add the edge (the public entry point)
+1. **Create** → **GitHub Repo** → `faizunnur/CyberConnect-DIU` → **Deploy**.
+2. Rename the service **edge**.
+3. **Settings** → **Source** → **Root Directory**: `/infrastructure/nginx/railway`.
+4. **Settings** → **Deploy** → Healthcheck Path: `/healthz`.
+5. **Variables** → Raw Editor:
+   ```
+   PORT=8080
+   BACKEND_HOST=${{backend.RAILWAY_PRIVATE_DOMAIN}}
+   FRONTEND_HOST=${{frontend.RAILWAY_PRIVATE_DOMAIN}}
+   ```
+6. **Settings** → **Networking** → **Public Networking** → **Generate Domain**. When asked for the port, enter `8080`.
+   Railway shows a domain such as `edge-production-xxxx.up.railway.app`. Copy it.
+7. Deploy.
+
+## Step 10 — Tell the backend its public address
+1. Open **backend** → **Variables** → edit `APP_BASE_URL` → `https://<the edge domain from Step 9>`
+   (for example `https://edge-production-xxxx.up.railway.app`, no trailing slash).
+2. **Deploy** the staged backend changes.
+
+The backend refuses to start if this is not an `https://` address, if `SCANNER_TYPE` is not `clamav`, or if
+`E2E_FIXTURES_ENABLED` is `true`; that is intentional.
+
+## Step 11 — Check that it works
+Wait until all seven service cards are green (the backend needs ClamAV to be ready first; its first start runs the
+database migrations and takes 1–2 minutes). Then open in a browser:
+
+| URL | Expect |
 |---|---|
-| `PORT` | `8080` |
-| `BACKEND_HOST` | `${{backend.RAILWAY_PRIVATE_DOMAIN}}` |
-| `FRONTEND_HOST` | `${{frontend.RAILWAY_PRIVATE_DOMAIN}}` |
+| `https://<edge domain>/` | the landing page |
+| `https://<edge domain>/healthz` | `{"status":"ok","service":"frontend", ...}` |
+| `https://<edge domain>/api/v1/health` | `{"status":"UP","application":"CyberConnect DIU","environment":"prod", ...}` |
+| `https://<edge domain>/actuator/health` | `404` (management endpoints are private, as designed) |
 
-6. Copy the edge domain into the backend: `APP_BASE_URL=https://<edge domain>` (or
-   `https://${{edge.RAILWAY_PUBLIC_DOMAIN}}` while you use the Railway-generated domain). The backend only accepts
-   WebSocket connections from that origin and uses it in every email link.
+In **backend** → **Logs** you should see Flyway finishing at version `V007` and two lines
+`Created private storage bucket 'verification-documents'` and `... 'member-media'`.
 
-## 7. First rollout and verification
-Deploy in this order and wait for each to be green: Postgres, Redis, storage, clamav (signatures downloaded), backend,
-frontend, edge. Then:
-1. `https://<edge domain>/healthz` → 200 and `https://<edge domain>/api/v1/health` → 200;
-   `https://<edge domain>/actuator/health` → 404 (management stays private).
-2. Backend logs show Flyway at `V007` and the two buckets created. Set `STORAGE_ENSURE_BUCKETS=false` and redeploy.
-3. Register the bootstrap administrator, confirm the email (so the SMTP relay works), sign in, enrol MFA, then clear
-   `BOOTSTRAP_SUPER_ADMIN_EMAIL` and redeploy the backend.
-4. Register a normal account, upload a **fictional** test document, verify it as the moderator, open the directory,
-   feed, messages and notifications (the bell confirms the WebSocket path through the edge).
-5. Real identity-document collection stays off (`verification.real_documents_enabled`, an admin setting) until the
-   institutional approval in `docs/security/checklist.md` is recorded.
+## Step 12 — Create your administrator account and lock things down
+1. Open `https://<edge domain>/register` and register with the email you put in `BOOTSTRAP_SUPER_ADMIN_EMAIL`.
+2. Check that mailbox: the verification email proves the SMTP settings work. Click the link.
+3. Sign in, open **Settings → Security** and enrol MFA with an authenticator app (admin screens require it).
+4. In **backend** → **Variables**: set `STORAGE_ENSURE_BUCKETS=false` and clear `BOOTSTRAP_SUPER_ADMIN_EMAIL`
+   (empty value). Deploy.
+5. Register a second, normal account, upload a **fictional** test document, verify it from the admin pages, then try
+   the directory, feed, messages and notifications. The bell updating without a refresh confirms the WebSocket path.
 
-## 8. Day-2 operations on Railway
-- **Deploys**: every push to `main` redeploys the three repo services; use *Settings → Watch Paths* (`/backend/**`,
-  `/frontend/**`, `/infrastructure/nginx/railway/**`) so a frontend commit does not rebuild the backend.
-- **Logs**: service → Logs, or `railway logs -s backend`. Logs are JSON (ECS format); the `requestId` field matches the
-  `X-Request-Id` header returned to clients.
-- **Backups**: Railway volumes (Postgres, storage, clamav) have a *Backups* tab whose schedule depends on the plan;
-  additionally take logical dumps with `railway connect Postgres` + `pg_dump` and keep the document encryption key
-  off-platform. `scripts/backup.sh` is Compose-only.
-- **Metrics**: the management port (8081, Prometheus) is not reachable from outside the private network; use Railway's
-  service metrics, or add a private scraper service later.
-- **Scaling**: one replica per service. Sessions and rate limits live in Redis, so the backend can be scaled to two
-  replicas if needed; RustFS and ClamAV must stay single-replica because of their volumes.
-- **Rollback**: Deployments tab → previous successful deployment → *Redeploy* (migrations are forward-only; restore the
-  database from a backup if a migration must be undone).
-- **Rotation**: change a sealed variable and redeploy; a changed `REDIS_PASSWORD` ends all sessions.
+Real identity-document collection stays switched off (admin setting `verification.real_documents_enabled`) until the
+institution's approval is recorded; see `docs/security/checklist.md`.
 
-## 9. Differences from the VPS deployment
-| | VPS (`docker-compose.prod.yml`) | Railway |
-|---|---|---|
-| TLS | nginx + certbot | Railway edge; nginx listens on plain HTTP |
-| Images | built on the host, pinned by `APP_VERSION` | built by Railway from the Dockerfiles on each push |
-| Buckets | created by the operator | created once by the backend (`STORAGE_ENSURE_BUCKETS=true`) |
-| Client IP | Docker bridge network is trusted by default | `SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES` must cover the private network |
-| Prometheus | scrape 8081 from the host | not exposed; Railway metrics |
+## Step 13 — Optional: your own domain
+1. **edge** → **Settings** → **Networking** → **+ Custom Domain** → type for example `cyberconnect.diu.edu.bd`.
+2. Create the CNAME (and TXT, if shown) records Railway displays at your DNS provider; wait for the green check.
+3. Change the backend's `APP_BASE_URL` to `https://cyberconnect.diu.edu.bd` and deploy the backend.
+
+## Day-to-day
+- **Updates**: every push to `main` rebuilds backend, frontend and edge. To avoid rebuilding all three on every commit,
+  set **Settings → Watch Paths** to `/backend/**` on backend, `/frontend/**` on frontend and
+  `/infrastructure/nginx/railway/**` on edge.
+- **Logs**: service → **Logs**. Backend logs are JSON; the `requestId` field equals the `X-Request-Id` header a user
+  can read from their browser's network tab when reporting a problem.
+- **Rollback**: service → **Deployments** → previous successful deployment → **Redeploy**. Database migrations are
+  forward-only; to undo one, restore a backup.
+- **Backups**: Postgres, storage and clamav each have a volume; open the volume → **Backups** (available on paid
+  plans) and enable a schedule. Also take a logical dump now and then: `railway connect Postgres` then
+  `pg_dump` from the CLI shell. Keep `DOCUMENT_ENCRYPTION_KEY` outside Railway as well.
+- **Costs**: memory is billed per service; ClamAV is the biggest item. Everything else fits in about 2 GB together.
+- **Changing a secret**: edit the variable, deploy. Changing `REDIS_PASSWORD` or the Redis service signs everyone out.
+
+## Troubleshooting
+| Symptom | Cause and fix |
+|---|---|
+| backend log: `Refusing to start in production: APP_BASE_URL must use https` | Step 10 not done, or the value has no `https://`. |
+| backend log: `scanner.type=noop is not allowed in production` | `SCANNER_TYPE` must be `clamav`. |
+| backend log: `Connection refused` to `clamav.railway.internal:3310` | ClamAV still downloading signatures (Step 6). Wait for `clamd started`, then redeploy the backend. |
+| backend log: `password authentication failed for user "cyberconnect_app"` | The SQL in Step 4 used a different password than `DB_APP_PASSWORD`. Re-run `ALTER ROLE cyberconnect_app PASSWORD '...'`. |
+| backend log: `role "cyberconnect_app" does not exist` | Step 4 was skipped. |
+| backend log: `NoSuchBucket` | `STORAGE_ENSURE_BUCKETS` was `false` on the first start. Set it to `true`, deploy once, set it back. |
+| edge returns `502` | backend or frontend not healthy yet, or `BACKEND_HOST`/`FRONTEND_HOST` do not match the service names `backend`/`frontend` (renaming a service changes its private hostname). |
+| edge returns `429` for everyone after a few requests | `SERVER_TOMCAT_REMOTEIP_INTERNALPROXIES` missing on the backend, so all visitors look like one address. |
+| Verification email never arrives | Check the backend log for `MailSendException`. Port 465 needs `SMTP_SSL=true` and `SMTP_STARTTLS=false`; `MAIL_FROM` must equal the mailbox address; confirm the password in cPanel. |
+| Sign-in works but the page says "session expired" immediately | The browser reached the frontend through a different domain than `APP_BASE_URL`. Use only the edge domain and never give backend/frontend their own public domain. |
+| WebSocket (bell) not live | Same cause as above, or the `Origin` differs from `APP_BASE_URL`. |
+| Railway build fails with `pnpm-lock.yaml` or Maven errors | The service's **Root Directory** is wrong (Step 7.3, 8.3, 9.3). |
+
+## Why the setup looks like this
+- The app needs two private buckets through one key pair with path-style URLs, which Railway's own Buckets product
+  does not offer (per-bucket credentials, virtual-hosted URLs, public network only), so RustFS runs as a service.
+- TLS ends at Railway's edge, so the nginx image listens on plain HTTP; nginx resolves the private hostnames on every
+  request because their addresses change on each redeploy.
+- The single-origin rule, the production guards and the private management port are the same as on the VPS
+  deployment (`docs/operations/deployment.md`, ADR-0009).

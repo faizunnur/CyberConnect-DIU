@@ -23,7 +23,8 @@ Then edit `.env` and set the production values:
 | `APP_DOMAIN` | public host name, e.g. `cyberconnect.diu.edu.bd` |
 | `APP_VERSION` | git tag or short SHA being deployed (also passed to `scripts/deploy.sh`) |
 | `SCANNER_TYPE` | `clamav` (the backend refuses `noop` in production) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_STARTTLS`, `SMTP_AUTH`, `MAIL_FROM` | your relay |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH`, `MAIL_FROM` | your relay |
+| `SMTP_SSL`, `SMTP_STARTTLS` | `true`/`false` for port 465 (implicit TLS), `false`/`true` for port 587 (STARTTLS) |
 | `E2E_FIXTURES_ENABLED` | `false` (the backend refuses `true` in production) |
 | `BOOTSTRAP_SUPER_ADMIN_EMAIL` | the first administrator's email; clear it after that account registered |
 

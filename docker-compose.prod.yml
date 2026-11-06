@@ -21,6 +21,7 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_SSL: ${SMTP_SSL:-false}
       MAIL_FROM: ${MAIL_FROM:?MAIL_FROM missing}
       SMTP_AUTH: ${SMTP_AUTH:-true}
       MANAGEMENT_PORT: "8081"
