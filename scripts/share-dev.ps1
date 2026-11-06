@@ -11,7 +11,9 @@
   create verified members), switches Swagger off for the shared session, and warns when email still goes to
   Mailpit (testers would not receive verification emails).
 
-  Docker: uses Docker Desktop when it answers; otherwise falls back to the Ubuntu WSL engine (see CLAUDE.md §15).
+  Docker: -Engine auto (default) uses the engine that already holds this project's containers and volumes, else
+  Docker Desktop when both its engine and the "docker compose" plugin work, else the Ubuntu WSL engine.
+  Force one with -Engine wsl or -Engine desktop.
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts/share-dev.ps1          # start sharing, print the link
@@ -23,7 +25,9 @@ param(
     [int]$Port = 8088,
     [switch]$Stop,
     [switch]$Status,
-    [string]$WslDistro = 'Ubuntu'
+    [string]$WslDistro = 'Ubuntu',
+    [ValidateSet('auto', 'wsl', 'desktop')]
+    [string]$Engine = 'auto'
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
@@ -46,28 +50,74 @@ function Read-DotEnv {
     return $map
 }
 
-function Test-WindowsDocker {
+function Test-Exe([string]$file, [string[]]$arguments, [int]$timeoutMs = 20000) {
+    # Runs a native command quietly and reports success (exit code 0 within the timeout).
     try {
-        $p = Start-Process -FilePath 'docker' -ArgumentList 'info','--format','{{.ServerVersion}}' -NoNewWindow -PassThru `
-            -RedirectStandardOutput (Join-Path $stateDir 'docker-info.txt') -RedirectStandardError (Join-Path $stateDir 'docker-info.err')
-        if (-not $p.WaitForExit(15000)) { $p.Kill(); return $false }
+        $p = Start-Process -FilePath $file -ArgumentList $arguments -NoNewWindow -PassThru `
+            -RedirectStandardOutput (Join-Path $stateDir 'probe.out') -RedirectStandardError (Join-Path $stateDir 'probe.err')
+        $null = $p.Handle   # Windows PowerShell only reports ExitCode if the handle was opened before the exit
+        if (-not $p.WaitForExit($timeoutMs)) { $p.Kill(); return $false }
         return ($p.ExitCode -eq 0)
     } catch { return $false }
 }
 
-$script:useWsl = -not (Test-WindowsDocker)
-if ($script:useWsl) {
+function Test-DesktopDocker {
+    # Docker Desktop counts only when its engine answers AND the Compose plugin is available to this shell.
+    return (Test-Exe 'docker' @('info', '--format', '{{.ServerVersion}}')) -and (Test-Exe 'docker' @('compose', 'version'))
+}
+
+function Test-WslDocker {
+    return (Get-Command wsl.exe -ErrorAction SilentlyContinue) -and (Test-Exe 'wsl.exe' @('-d', $WslDistro, '-u', 'root', '--', 'docker', 'info') 60000)
+}
+
+function Test-WslHasStack {
+    # True when the WSL engine already holds this project's containers (and therefore its data volumes).
+    try {
+        $names = & wsl.exe -d $WslDistro -u root -- docker ps -a --filter 'label=com.docker.compose.project=cyberconnect-diu' --format '{{.Names}}' 2>$null
+        return [bool]($names | Where-Object { $_ })
+    } catch { return $false }
+}
+
+function Start-WslKeepAlive {
     # The WSL distro stops seconds after its last session ends, taking dockerd with it: keep one session open.
     $alive = Get-CimInstance Win32_Process -Filter "Name='wsl.exe'" | Where-Object { $_.CommandLine -like '*sleep 86400*' }
-    if (-not $alive) { Start-Process wsl.exe -ArgumentList "-d $WslDistro -u root -- sleep 86400" -WindowStyle Hidden }
-    $script:wslRoot = (& wsl -d $WslDistro -- wslpath -a "$root").Trim()
+    if (-not $alive) { Start-Process wsl.exe -ArgumentList "-d $WslDistro -u root -- sleep 86400" -WindowStyle Hidden; Start-Sleep -Seconds 3 }
+}
+
+# Engine choice: the stack's data lives in Docker volumes of ONE engine. Use the engine that already has the project
+# (so testers see the same data and only one stack binds port $Port); otherwise prefer Docker Desktop when it works.
+switch ($Engine) {
+    'wsl' { $script:useWsl = $true }
+    'desktop' {
+        if (-not (Test-DesktopDocker)) { throw 'Docker Desktop is not usable from this shell (engine or "docker compose" plugin missing).' }
+        $script:useWsl = $false
+    }
+    default {
+        $wslOk = $false
+        if (Get-Command wsl.exe -ErrorAction SilentlyContinue) { Start-WslKeepAlive; $wslOk = Test-WslDocker }
+        if ($wslOk -and (Test-WslHasStack)) { $script:useWsl = $true }
+        elseif (Test-DesktopDocker) { $script:useWsl = $false }
+        elseif ($wslOk) { $script:useWsl = $true }
+        else { throw 'No usable Docker engine: start Docker Desktop, or the Docker engine in the Ubuntu WSL distro.' }
+    }
+}
+if ($script:useWsl) {
+    Start-WslKeepAlive
+    $script:wslRoot = (& wsl.exe -d $WslDistro -- wslpath -a "$root").Trim()
+    Write-Host "Docker engine: WSL ($WslDistro)" -ForegroundColor DarkGray
+} else {
+    Write-Host 'Docker engine: Docker Desktop' -ForegroundColor DarkGray
 }
 
 function Invoke-Compose([string[]]$composeArgs, [hashtable]$extraEnv = @{}) {
     if ($script:useWsl) {
-        $assign = ($extraEnv.GetEnumerator() | ForEach-Object { "$($_.Key)='$($_.Value)'" }) -join ' '
-        $cmd = "cd '$($script:wslRoot)' && $assign docker compose $($composeArgs -join ' ')"
-        & wsl -d $WslDistro -u root -- bash -c $cmd
+        # No shell string crosses the Windows/WSL boundary (Windows PowerShell 5.1 strips embedded quotes from native
+        # arguments): compose-wsl.sh receives plain arguments, exports VAR=value pairs and picks a working Compose binary.
+        $wslArgs = @('-d', $WslDistro, '-u', 'root', '--exec', 'sh', "$($script:wslRoot)/scripts/compose-wsl.sh")
+        foreach ($k in $extraEnv.Keys) { $wslArgs += "$k=$($extraEnv[$k])" }
+        $wslArgs += '--'
+        $wslArgs += $composeArgs
+        & wsl.exe @wslArgs
     } else {
         $saved = @{}
         foreach ($k in $extraEnv.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $extraEnv[$k]) }

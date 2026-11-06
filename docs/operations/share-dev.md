@@ -5,8 +5,11 @@ people outside your network can try it while it runs on your computer. It is for
 the address changes every start and dies with the laptop.
 
 ## How it works
-1. Starts the Docker stack (`docker compose --profile full up -d`), using Docker Desktop when it answers and the
-   Ubuntu WSL engine otherwise (keeps a hidden WSL session alive so the distro does not stop).
+1. Starts the Docker stack (`docker compose --profile full up -d`) on the engine that already holds this project's
+   containers and volumes; otherwise Docker Desktop when its engine and Compose plugin work, else the Ubuntu WSL
+   engine (`-Engine wsl|desktop` forces one). In WSL it runs Compose through `scripts/compose-wsl.sh`, which skips the
+   broken Compose plugin that Docker Desktop's WSL integration can install, and keeps a hidden WSL session alive so
+   the distro does not stop.
 2. Starts a Cloudflare **quick tunnel** (`cloudflared tunnel --url http://localhost:8088`): free, no account, a random
    `https://<words>.trycloudflare.com` address, HTTPS and WebSockets included. `cloudflared.exe` is downloaded once to
    `%LOCALAPPDATA%\cloudflared\` if missing.
@@ -38,6 +41,8 @@ Register → confirm email → fill the onboarding form → upload a fictional d
 admin pages → directory, feed, opportunities, research, mentorship, messaging, notifications, impact.
 
 ## Limits and caveats
+- Run the script in a normal PowerShell window and leave it; the tunnel keeps running in the background after the
+  script prints the link.
 - Quick tunnels are rate-limited by Cloudflare and meant for testing; expect occasional slow first requests.
 - All testers arrive through the tunnel; per-address rate limits (login, registration) use the address Cloudflare
   reports in `X-Forwarded-For`, which nginx passes on.
