@@ -21,7 +21,7 @@ One Linux VPS runs Docker Compose with the base file plus `docker-compose.prod.y
 ## Addendum (7 Nov 2026): Railway
 The same topology can run on Railway with one service per container (`docs/operations/railway.md`): managed
 PostgreSQL/Redis, RustFS and ClamAV as image services with volumes, backend and frontend built from the repository,
-and a dedicated nginx image (`infrastructure/nginx/railway/`) as the only public service. TLS terminates at Railway's
+and a dedicated nginx image (`infrastructure/railway/edge/`) as the only public service. TLS terminates at Railway's
 edge; nginx resolves the private hostnames per request because their addresses change on every redeploy. The
 single-origin contract, the guards and the private management port are unchanged.
 

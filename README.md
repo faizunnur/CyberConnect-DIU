@@ -66,7 +66,7 @@ Disk: images ≈ 2.5 GB, Maven repo ≈ 1 GB, `node_modules` ≈ 0.6 GB.
 ```
 backend/        Spring Boot modular monolith (package-by-feature, see CLAUDE.md §5)
 frontend/       Next.js App Router application
-infrastructure/ nginx configs (dev, VPS prod, Railway edge image), PostgreSQL role init
+infrastructure/ nginx configs (dev, VPS prod), PostgreSQL role init, Railway service images (railway/)
 docs/           requirements, planning status, architecture + ADRs, database, API
 scripts/        secret generation helpers
 docker-compose.yml / docker-compose.override.yml (dev) / docker-compose.prod.yml (M8)

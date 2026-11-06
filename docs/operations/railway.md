@@ -4,7 +4,7 @@ Follow the steps in order. Each step tells you exactly where to click and what t
 first time. When something fails, jump to the *Troubleshooting* section at the end.
 
 ## What you get
-Seven Railway services in one project. Only **edge** is reachable from the internet; everything else talks over
+Seven Railway services in one project (five built from this repository, two managed databases). Only **edge** is reachable from the internet; everything else talks over
 Railway's private network. That single public origin is what keeps the login cookies, CSRF protection and the
 WebSocket working, so never add a public domain to the backend or the frontend.
 
@@ -80,10 +80,14 @@ The managed database only has the `postgres` superuser. The app runs with a leas
    `npm i -g @railway/cli`, run `railway login`, `railway link`, `railway connect Postgres`, and paste the SQL there.)
 
 ## Step 5 — Add the file storage (RustFS)
-1. **Create** → **Docker Image** → type `rustfs/rustfs:1.0.4` → **Deploy**.
-2. Click the new service → **Settings** → rename it **storage** (the name becomes its private hostname).
-3. **Settings** → **Volumes** → **Add volume** → mount path `/data`.
-4. **Variables** → **Raw Editor** → paste, replacing the secret:
+Deploy it from the repository (a one-line Dockerfile that pins `rustfs/rustfs:1.0.4`). Railway's **Docker Image**
+box sometimes answers *Invalid Docker image* for perfectly valid public images (its validator is rate-limited by
+Docker Hub); building from the repo avoids that check entirely.
+1. **Create** → **GitHub Repo** → `faizunnur/CyberConnect-DIU` → **Deploy**.
+2. Rename the service **storage** (the name becomes its private hostname).
+3. **Settings** → **Source** → **Root Directory**: `/infrastructure/railway/storage`.
+4. **Settings** → **Volumes** → **Add volume** → mount path `/data`.
+5. **Variables** → **Raw Editor** → paste, replacing the secret:
    ```
    RUSTFS_ACCESS_KEY=cyberconnect
    RUSTFS_SECRET_KEY=paste-STORAGE_SECRET_KEY-here
@@ -92,13 +96,16 @@ The managed database only has the `postgres` superuser. The app runs with a leas
    RUSTFS_CONSOLE_ENABLE=false
    ```
    Click the eye icon next to `RUSTFS_SECRET_KEY` → **Seal** (hides it for good).
-5. **Deploy** the staged changes (button at the top). Do **not** add a public domain to this service.
+6. **Deploy** the staged changes (button at the top). Do **not** add a public domain to this service.
+
+(If you prefer the Docker Image box and it accepts the name, `docker.io/rustfs/rustfs:1.0.4` with the same volume and
+variables is equivalent.)
 
 ## Step 6 — Add the virus scanner (ClamAV)
-1. **Create** → **Docker Image** → `clamav/clamav:1.4.6` → **Deploy**.
+1. **Create** → **GitHub Repo** → `faizunnur/CyberConnect-DIU` → **Deploy**.
 2. Rename the service **clamav**.
-3. **Settings** → **Volumes** → mount path `/var/lib/clamav` (keeps the downloaded signatures).
-4. **Variables**: `CLAMAV_NO_MILTERD` = `true`.
+3. **Settings** → **Source** → **Root Directory**: `/infrastructure/railway/clamav` (pins `clamav/clamav:1.4.6`).
+4. **Settings** → **Volumes** → mount path `/var/lib/clamav` (keeps the downloaded signatures).
 5. Deploy. The first start downloads about 300 MB of signatures and takes 5–10 minutes; the log ends with
    `clamd started` when it is ready. Memory use settles around 2.5–3 GB; that is normal.
 
@@ -189,7 +196,7 @@ What the unusual variables do:
 ## Step 9 — Add the edge (the public entry point)
 1. **Create** → **GitHub Repo** → `faizunnur/CyberConnect-DIU` → **Deploy**.
 2. Rename the service **edge**.
-3. **Settings** → **Source** → **Root Directory**: `/infrastructure/nginx/railway`.
+3. **Settings** → **Source** → **Root Directory**: `/infrastructure/railway/edge`.
 4. **Settings** → **Deploy** → Healthcheck Path: `/healthz`.
 5. **Variables** → Raw Editor:
    ```
@@ -241,9 +248,9 @@ institution's approval is recorded; see `docs/security/checklist.md`.
 3. Change the backend's `APP_BASE_URL` to `https://cyberconnect.diu.edu.bd` and deploy the backend.
 
 ## Day-to-day
-- **Updates**: every push to `main` rebuilds backend, frontend and edge. To avoid rebuilding all three on every commit,
-  set **Settings → Watch Paths** to `/backend/**` on backend, `/frontend/**` on frontend and
-  `/infrastructure/nginx/railway/**` on edge.
+- **Updates**: every push to `main` rebuilds the five repo services. To avoid rebuilding all of them on every
+  commit, set **Settings → Watch Paths** to `/backend/**` on backend, `/frontend/**` on frontend and
+  `/infrastructure/railway/<service>/**` on edge, storage and clamav.
 - **Logs**: service → **Logs**. Backend logs are JSON; the `requestId` field equals the `X-Request-Id` header a user
   can read from their browser's network tab when reporting a problem.
 - **Rollback**: service → **Deployments** → previous successful deployment → **Redeploy**. Database migrations are
@@ -268,7 +275,8 @@ institution's approval is recorded; see `docs/security/checklist.md`.
 | Verification email never arrives | Check the backend log for `MailSendException`. Port 465 needs `SMTP_SSL=true` and `SMTP_STARTTLS=false`; `MAIL_FROM` must equal the mailbox address; confirm the password in cPanel. |
 | Sign-in works but the page says "session expired" immediately | The browser reached the frontend through a different domain than `APP_BASE_URL`. Use only the edge domain and never give backend/frontend their own public domain. |
 | WebSocket (bell) not live | Same cause as above, or the `Origin` differs from `APP_BASE_URL`. |
-| Railway build fails with `pnpm-lock.yaml` or Maven errors | The service's **Root Directory** is wrong (Step 7.3, 8.3, 9.3). |
+| Railway build fails with `pnpm-lock.yaml` or Maven errors | The service's **Root Directory** is wrong (Steps 5.3, 6.3, 7.3, 8.3, 9.3). |
+| **Create → Docker Image** says *Invalid Docker image* | Railway's validator, not the image (`rustfs/rustfs:1.0.4` and `clamav/clamav:1.4.6` are public). Use the GitHub-repo route in Steps 5 and 6, or retry later with the `docker.io/` prefix. |
 
 ## Why the setup looks like this
 - The app needs two private buckets through one key pair with path-style URLs, which Railway's own Buckets product
