@@ -91,6 +91,7 @@ docker compose --profile full --profile scanning up -d   # + ClamAV (2 GB RAM)
 docker compose ps / logs -f backend / down       # never `down -v` without explicit user confirmation
 cd backend && mvn spring-boot:run                # native backend (profile local, reads ../.env)
 cd frontend && pnpm dev                          # native frontend on :3000 with /api proxied to :8080
+powershell -ExecutionPolicy Bypass -File scripts/share-dev.ps1   # public test link via Cloudflare quick tunnel (docs/operations/share-dev.md)
 ```
 
 ## 12. Testing commands

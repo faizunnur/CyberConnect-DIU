@@ -96,7 +96,9 @@ retry `git push -u origin main` once access is granted.
 
 ## Next exact task (all milestones delivered; remaining items need the owner)
 1. `main` is pushed to `faizunnur/CyberConnect-DIU` (7 Nov 2026). Deploy on Railway with `docs/operations/railway.md`
-   or on a VPS with `docs/operations/deployment.md`.
+   or on a VPS with `docs/operations/deployment.md`. For a temporary public test link from the laptop run
+   `scripts/share-dev.ps1` (`docs/operations/share-dev.md`); fill the SMTP password in `.env` first so testers get
+   their verification emails.
 2. Re-enable `push`/`pull_request` triggers in `.github/workflows/*.yml` and run the Security
    workflow; fix high/critical findings.
 3. Go-live prerequisites in `docs/security/checklist.md` (institutional approval for document collection, restore

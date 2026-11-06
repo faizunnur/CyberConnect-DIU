@@ -28,3 +28,6 @@ Thumbs.db
 # Logs and reports
 *.log
 dependency-check-report.*
+
+# scripts/share-dev.ps1 state (tunnel log, pid)
+.share/

@@ -100,7 +100,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: docker
       APP_ENV: docker
-      APP_BASE_URL: http://localhost:${APP_PORT:-8088}
+      # Overridden by scripts/share-dev.ps1 while the stack is shared through a public tunnel.
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:${APP_PORT:-8088}}
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-cyberconnect}
       DB_MIGRATOR_USER: ${DB_MIGRATOR_USER:-cyberconnect_migrator}
       DB_MIGRATOR_PASSWORD: ${DB_MIGRATOR_PASSWORD}
@@ -118,14 +119,20 @@ services:
       SCANNER_TYPE: ${SCANNER_TYPE:-noop}
       CLAMAV_HOST: clamav
       CLAMAV_PORT: "3310"
+      # Mailpit by default; set SMTP_* in .env for a real relay (needed when sharing the stack with testers).
       SMTP_HOST: ${SMTP_HOST:-mailpit}
-      SMTP_PORT: "1025"
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_SSL: ${SMTP_SSL:-false}
       MAIL_FROM: ${MAIL_FROM:-no-reply@cyberconnect.local}
       BOOTSTRAP_SUPER_ADMIN_EMAIL: ${BOOTSTRAP_SUPER_ADMIN_EMAIL:-}
       # Dev-only Playwright fixtures endpoint; the backend refuses to start with this in production.
       E2E_FIXTURES_ENABLED: ${E2E_FIXTURES_ENABLED:-false}
       SESSION_COOKIE_SECURE: "false"
-      API_DOCS_ENABLED: "true"
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
     expose: ["8080"]
     depends_on:
       postgres:

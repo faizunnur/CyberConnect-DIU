@@ -48,8 +48,9 @@ Full-stack Playwright flows (onboarding, opportunities, messaging) need `E2E_FIX
 (dev only; refused in production). The accessibility spec (axe-core, WCAG 2.2 AA) runs against the public pages.
 
 ## Operations
-`docs/operations/` holds the VPS deployment guide, the Railway deployment guide (`railway.md`), runbook,
-backup/restore procedure and monitoring notes;
+`docs/operations/` holds the VPS deployment guide, the Railway deployment guide (`railway.md`), the guide for
+sharing the local stack with testers (`share-dev.md`, `scripts/share-dev.ps1`), runbook, backup/restore procedure
+and monitoring notes;
 `docs/security/checklist.md` tracks the security controls and the go-live prerequisites.
 
 ## Resource requirements (measured on an i5-12450HX, 16 GB)
