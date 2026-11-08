@@ -25,13 +25,21 @@ function PhotoGrid({ photos }: { photos: AttachmentView[] }) {
   const [open, setOpen] = useState<number | null>(null);
   const count = photos.length;
   const single = photos[0];
-  const singleRatio = single.width && single.height ? Math.min(Math.max(single.width / single.height, 0.75), 1.91) : 1.5;
 
   return (
     <>
       {count === 1 ? (
-        <button type="button" className="block w-full overflow-hidden rounded-lg bg-muted" onClick={() => setOpen(0)} aria-label="Open photo">
-          <img src={single.url!} alt="" loading="lazy" className="max-h-[560px] w-full object-cover" style={{ aspectRatio: String(singleRatio) }} />
+        // A single photo is shown whole (never cropped): it keeps its own shape and only its height is capped, with a
+        // neutral background beside tall photos. width/height reserve the space before the image loads.
+        <button type="button" className="flex w-full justify-center overflow-hidden rounded-lg bg-muted" onClick={() => setOpen(0)} aria-label="Open photo">
+          <img
+            src={single.url!}
+            alt=""
+            loading="lazy"
+            width={single.width ?? undefined}
+            height={single.height ?? undefined}
+            className="h-auto max-h-[min(80vh,720px)] w-auto max-w-full object-contain"
+          />
         </button>
       ) : (
         <div className={cn("grid gap-1 overflow-hidden rounded-lg", count === 2 ? "grid-cols-2" : "grid-cols-2 grid-rows-2")} style={{ aspectRatio: count === 2 ? "2 / 1.2" : "1.4 / 1" }}>

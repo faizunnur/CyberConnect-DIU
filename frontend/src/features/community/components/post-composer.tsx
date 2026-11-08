@@ -360,7 +360,11 @@ function PendingAttachments({ items, onRemove }: { items: Pending[]; onRemove: (
         <ul className={cn("grid gap-2", photos.length === 1 ? "grid-cols-1" : "grid-cols-2 sm:grid-cols-4")}>
           {photos.map((item) => (
             <li key={item.key} className="relative overflow-hidden rounded-lg border bg-muted">
-              <img src={item.preview ?? ""} alt={item.file.name} className={cn("w-full object-cover", photos.length === 1 ? "max-h-80" : "aspect-square")} />
+              <img
+                src={item.preview ?? ""}
+                alt={item.file.name}
+                className={cn(photos.length === 1 ? "mx-auto h-auto max-h-[min(70vh,560px)] w-auto max-w-full object-contain" : "aspect-square w-full object-cover")}
+              />
               <StatusOverlay item={item} />
               <RemoveButton item={item} onRemove={onRemove} />
             </li>
