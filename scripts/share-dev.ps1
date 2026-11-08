@@ -189,6 +189,9 @@ if (-not (Test-Path $cloudflared)) {
 Write-Host 'Building changed code and starting the full stack (postgres, redis, storage, mailpit, backend, frontend, nginx) ...' -ForegroundColor Cyan
 # --build keeps the containers in step with the checked-out code (cached layers make it quick when nothing changed).
 Invoke-Compose @('--profile','full','up','-d','--build')
+# nginx resolves the backend/frontend container addresses once at start-up; after a rebuild those containers get new
+# addresses, so nginx must restart or it answers 502 Bad Gateway.
+Invoke-Compose @('--profile','full','restart','nginx')
 if (-not (Wait-Backend 180)) { throw "Backend did not become healthy on http://localhost:$Port within 3 minutes." }
 
 # ---- tunnel ----------------------------------------------------------------------------------------------------
