@@ -14,6 +14,16 @@ Updated: 7 Nov 2026 (session 2). Read `CLAUDE.md` first.
 | M7 Impact | Done and verified on 30 Oct 2026 (`ImpactIT`, frontend lint/typecheck/build, Playwright against the rebuilt stack). Committed as `feat(impact): …`. |
 | M8 Production readiness | Done on 30 Oct 2026: production Compose overrides + TLS nginx config, start-up guards, management port with Prometheus, request ids, notification retention, backup/restore/deploy scripts, operations docs, security checklist, axe-core accessibility spec, CI e2e job. Final full verification: `mvn verify` 72 tests green (1 opt-in skip), Playwright 26/26 (onboarding, opportunities, messaging, accessibility). Committed as `chore(ops): …`. Not deployed (no VPS yet, per mandate). |
 
+## After M8 (7 Nov 2026)
+- Social-style feed UI: "Start a post" composer with Photo / Document / Event / Achievement shortcuts, drag-and-drop
+  and paste, immediate uploads with previews; post cards with author headline, audience icon, "⋯" menu (save, copy
+  link, edit, delete, report), "see more", photo grid with full-screen viewer, document cards, reaction counts and a
+  Like / Comment / Repost / Save action bar; profile card with cover band in the right rail.
+- Post attachments (V008, D-47/D-48): `PostAttachmentService`, upload/discard/serve endpoints, moderator serving path,
+  hourly purge of unclaimed uploads, `PostAttachmentIT`.
+- Mail delivery failures are logged, not thrown (D-49, `SmtpMailSenderTest`).
+- Responsive full-width layout, QR code for MFA enrolment, Railway guide, `scripts/share-dev.ps1` public test link.
+
 ## What exists (M1–M8)
 - M7: `impact` module (records with exactly one on-platform source, proposer-side confirmation, counterpart
   confirm/dispute, proposer withdraw, moderator resolution with audit, CONFIRMED-only statistics, member impact on

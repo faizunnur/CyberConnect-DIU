@@ -1,7 +1,7 @@
 "use client";
 
 import { Flag, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormError, FormSuccess } from "@/components/forms/form-alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,29 +19,35 @@ import { useReport } from "../hooks";
 import { REPORT_REASON_LABELS, type ReportReason, type ReportTargetType } from "../types";
 
 /** Report a post, comment or member. The reporter only learns that moderators will look; nothing else. */
-export function ReportButton({ targetType, targetId, label = "Report", size = "sm" }: {
+export function ReportButton({ targetType, targetId, label = "Report", size = "sm", open: controlledOpen, onOpenChange, hideTrigger }: {
   targetType: ReportTargetType;
   targetId: string;
   label?: string;
   size?: "sm" | "xs";
+  /** Controlled mode (e.g. opened from a post's "more" menu); combine with `hideTrigger`. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (value: boolean) => (onOpenChange ? onOpenChange(value) : setUncontrolledOpen(value));
   const [reason, setReason] = useState<ReportReason>("SPAM");
   const [details, setDetails] = useState("");
   const report = useReport();
   const already = isApiError(report.error, "ALREADY_REPORTED");
+  const { reset } = report;
+  useEffect(() => {
+    if (open) reset();
+  }, [open, reset]);
 
   return (
     <>
-      <Button
-        type="button"
-        variant="ghost"
-        size={size}
-        className="text-muted-foreground"
-        onClick={() => { report.reset(); setOpen(true); }}
-      >
-        <Flag aria-hidden="true" /> {label}
-      </Button>
+      {hideTrigger ? null : (
+        <Button type="button" variant="ghost" size={size} className="text-muted-foreground" onClick={() => setOpen(true)}>
+          <Flag aria-hidden="true" /> {label}
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>

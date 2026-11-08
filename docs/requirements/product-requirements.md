@@ -96,6 +96,17 @@ instructions. Precedence: owner instructions → assessment decisions → propos
 - D-46 Only CONFIRMED records count: profile totals, the member's confirmed list and the community aggregate are
   computed from them at read time. No counter is stored or editable.
 
+## Post attachments and mail delivery (D-47..D-49, decided 7 Nov 2026)
+- D-47 A post may carry up to four photos or one document, never both, and may consist of attachments only. Photos:
+  JPEG/PNG, re-encoded to JPEG with all metadata removed and the longer edge capped at 2048 px. Documents: PDF, Word,
+  PowerPoint or Excel (OOXML) detected by content; macro-enabled packages are refused. 10 MB per file, 60 uploads per
+  member per hour, malware scan, private media bucket, served only through the backend to viewers who may see the post
+  (photos inline, documents as downloads). Attachments cannot be changed after posting; deleting the post deletes them.
+- D-48 Files are uploaded one at a time while composing and stay unclaimed until the post is created; unclaimed
+  uploads are deleted after 24 hours. Reposts carry no attachments of their own.
+- D-49 Mail delivery never fails the action that triggered it: a relay error or a rejected recipient is logged
+  (recipient domain only) and the member can request the verification email again.
+
 ## Modules
 1. Identity & onboarding: register, login, logout, email verification, password reset, sessions, MFA (TOTP + recovery
    codes), rate limiting, session revocation.

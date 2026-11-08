@@ -14,57 +14,48 @@ export function VerifiedRail() {
   const { data: profile } = useMyProfile();
   const { data: network } = useNetworkSummary();
   if (!me) return null;
+  const name = profile?.displayName ?? me.fullName;
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BadgeCheck className="size-4 text-success" aria-hidden="true" /> Verified member
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <div className="flex items-center gap-3">
-            <MemberAvatar name={profile?.displayName ?? me.fullName} photoUrl={profile?.photoUrl ?? null} size="lg" />
-            <div className="min-w-0">
-              <p className="truncate font-medium text-foreground">{profile?.displayName ?? me.fullName}</p>
-              {profile?.headline ? <p className="truncate text-xs">{profile.headline}</p> : null}
-            </div>
-          </div>
-          <ul className="mt-2">
-            {me.affiliations.map((a) => (
-              <li key={a.id}>
-                {AFFILIATION_LABELS[a.type]} · {a.status.toLowerCase()}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1">
-            <Link href={`/members/${me.id}`} className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">View profile</Link>
-            <Link href="/settings/profile" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">Edit profile</Link>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <UserPlus className="size-4 text-primary" aria-hidden="true" /> Network
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          <p>
-            <span className="font-medium text-foreground">{network?.connections ?? 0}</span> connection{network?.connections === 1 ? "" : "s"}
+      <Card className="gap-0 overflow-hidden py-0">
+        <div className="h-16 bg-gradient-to-r from-navy via-primary/80 to-primary" aria-hidden="true" />
+        <div className="-mt-9 flex flex-col items-center px-4 pb-4 text-center">
+          <Link href={`/members/${me.id}`} className="rounded-full ring-4 ring-card" aria-label="View your profile">
+            <MemberAvatar name={name} photoUrl={profile?.photoUrl ?? null} size="lg" className="size-16 text-lg" />
+          </Link>
+          <Link href={`/members/${me.id}`} className="mt-2 flex items-center gap-1 font-semibold hover:underline">
+            {name}
+            <BadgeCheck className="size-4 shrink-0 text-primary" aria-label="Verified member" />
+          </Link>
+          {profile?.headline ? <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{profile.headline}</p> : null}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {me.affiliations.map((a) => AFFILIATION_LABELS[a.type]).join(" · ")}
           </p>
+        </div>
+        <div className="border-t text-sm">
+          <Link href="/connections" className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-accent">
+            <span className="text-muted-foreground">Connections</span>
+            <span className="font-semibold text-primary">{network?.connections ?? 0}</span>
+          </Link>
           {network && network.pendingIncoming > 0 ? (
-            <p>
-              <Link href="/connections" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">
-                {network.pendingIncoming} pending request{network.pendingIncoming === 1 ? "" : "s"}
-              </Link>
-            </p>
+            <Link href="/connections" className="flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-accent">
+              <span className="text-muted-foreground">Invitations</span>
+              <span className="font-semibold text-primary">{network.pendingIncoming}</span>
+            </Link>
           ) : (
-            <p>
-              <Link href="/members" className="text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary">Find members</Link>
-            </p>
+            <Link href="/members" className="flex items-center gap-2 px-4 py-2.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+              <UserPlus className="size-4 text-primary" aria-hidden="true" /> Grow your network
+            </Link>
           )}
-        </CardContent>
+        </div>
+        <div className="flex gap-2 border-t p-3">
+          <Link href={`/members/${me.id}`} className="flex-1 rounded-full border border-primary px-3 py-1.5 text-center text-sm font-medium text-primary transition-colors hover:bg-primary/10">
+            View profile
+          </Link>
+          <Link href="/settings/profile" className="flex-1 rounded-full border px-3 py-1.5 text-center text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            Edit
+          </Link>
+        </div>
       </Card>
       {!me.mfaEnabled ? (
         <Card>

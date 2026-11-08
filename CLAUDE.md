@@ -138,7 +138,7 @@ Implementation notes that are easy to get wrong:
 ADR-0001 modular monolith (ports for inverse module dependencies, see ADR-0008 addendum) · ADR-0002 Redis sessions · ADR-0003 nginx same-origin routing · ADR-0004 S3 storage
 abstraction (RustFS locally; MinIO is discontinued) · ADR-0005 PostgreSQL · ADR-0006 verification/affiliation state
 machine · ADR-0007 document encryption and private access · ADR-0008 ArchUnit module boundaries.
-Business-rule decisions D-01..D-46 are recorded in `docs/requirements/product-requirements.md`.
+Business-rule decisions D-01..D-49 are recorded in `docs/requirements/product-requirements.md`.
 
 ## 17. Prohibited shortcuts
 No plaintext passwords; no tokens in localStorage; no frontend-only authorization; no public/presigned document URLs;

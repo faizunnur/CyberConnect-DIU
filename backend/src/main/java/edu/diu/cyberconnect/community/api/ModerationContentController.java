@@ -68,6 +68,13 @@ public class ModerationContentController {
         return posts.moderatorGet(me(), postId);
     }
 
+    /** Attachments of any post (removed ones included) for moderators handling a report. */
+    @GetMapping("/posts/{postId}/attachments/{attachmentId}")
+    public org.springframework.http.ResponseEntity<byte[]> postAttachment(@PathVariable UUID postId,
+            @PathVariable UUID attachmentId) {
+        return PostController.serve(posts.moderatorAttachment(postId, attachmentId));
+    }
+
     @PostMapping("/posts/{postId}/remove")
     public PostView removePost(@PathVariable UUID postId, @Valid @RequestBody ReasonRequest request) {
         return posts.remove(me(), postId, request.reason());

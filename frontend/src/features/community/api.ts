@@ -2,6 +2,7 @@ import { toQuery } from "@/features/profile/api";
 import { apiFetch } from "@/lib/api/client";
 import type { Page } from "@/lib/api/types";
 import type {
+  AttachmentView,
   CommentView,
   CreatePostRequest,
   FeedParams,
@@ -18,6 +19,12 @@ export const communityApi = {
   bookmarks: (page = 0) => apiFetch<Page<PostView>>(`/bookmarks${toQuery({ page, size: 20 })}`),
   trending: () => apiFetch<TrendingTag[]>("/hashtags/trending"),
   post: (id: string) => apiFetch<PostView>(`/posts/${id}`),
+  uploadAttachment: (file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return apiFetch<AttachmentView>("/posts/attachments", { method: "POST", body: form });
+  },
+  discardAttachment: (id: string) => apiFetch<void>(`/posts/attachments/${id}`, { method: "DELETE" }),
   create: (body: CreatePostRequest) => apiFetch<PostView>("/posts", { method: "POST", json: body }),
   edit: (id: string, body: { intent: PostIntent; body: string; visibility: PostVisibility }) =>
     apiFetch<PostView>(`/posts/${id}`, { method: "PUT", json: body }),

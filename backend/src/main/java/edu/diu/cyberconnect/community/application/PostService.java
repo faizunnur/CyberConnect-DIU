@@ -55,11 +55,12 @@ public class PostService {
     private final AuditService audit;
     private final AuditContext auditContext;
     private final NotificationService notifications;
+    private final PostAttachmentService attachments;
 
     public PostService(PostRepository posts, PostLikeRepository likes, BookmarkRepository bookmarks,
             HashtagRepository hashtags, PostHashtagRepository postHashtags, FeedQueryRepository feedQuery,
             PostAssembler assembler, RateLimiter rateLimiter, AuditService audit, AuditContext auditContext,
-            NotificationService notifications) {
+            NotificationService notifications, PostAttachmentService attachments) {
         this.posts = posts;
         this.likes = likes;
         this.bookmarks = bookmarks;
@@ -71,10 +72,21 @@ public class PostService {
         this.audit = audit;
         this.auditContext = auditContext;
         this.notifications = notifications;
+        this.attachments = attachments;
     }
 
     public PostView create(UUID authorId, PostIntent intent, String rawBody, PostVisibility visibility, UUID repostOfId) {
-        String body = sanitizeBody(rawBody, repostOfId != null);
+        return create(authorId, intent, rawBody, visibility, repostOfId, List.of());
+    }
+
+    /** Creates a post; {@code attachmentIds} are the author's own unclaimed uploads (photos or one document). */
+    public PostView create(UUID authorId, PostIntent intent, String rawBody, PostVisibility visibility, UUID repostOfId,
+            List<UUID> attachmentIds) {
+        boolean hasAttachments = attachmentIds != null && !attachmentIds.isEmpty();
+        if (hasAttachments && repostOfId != null) {
+            throw new BadRequestException("ATTACHMENT_ON_REPOST", "Reposts cannot carry attachments.");
+        }
+        String body = sanitizeBody(rawBody, repostOfId != null || hasAttachments);
         if (repostOfId != null) {
             Post original = posts.findById(repostOfId).orElseThrow(PostService::postNotFound);
             if (!original.isActive() || !feedQuery.isVisible(authorId, original.getId())) {
@@ -89,9 +101,11 @@ public class PostService {
         Post post = posts.save(Post.create(authorId, intent, body, visibility == null ? PostVisibility.ALL_MEMBERS : visibility,
                 repostOfId));
         linkHashtags(post);
+        attachments.claim(authorId, post.getId(), attachmentIds);
         if (repostOfId != null) {
             posts.adjustReposts(repostOfId, 1);
         }
+        posts.flush();
         return get(authorId, post.getId());
     }
 
@@ -100,7 +114,8 @@ public class PostService {
         if (!post.isActive()) {
             throw new ConflictException("POST_NOT_EDITABLE", "This post can no longer be edited.");
         }
-        post.edit(intent, sanitizeBody(rawBody, post.isRepost()), visibility == null ? post.getVisibility() : visibility);
+        boolean hasAttachments = !attachments.forPosts(List.of(postId), false).isEmpty();
+        post.edit(intent, sanitizeBody(rawBody, post.isRepost() || hasAttachments), visibility == null ? post.getVisibility() : visibility);
         hashtags.unlinkAll(postId);
         linkHashtags(post);
         return get(userId, postId);
@@ -113,6 +128,7 @@ public class PostService {
         }
         boolean wasActive = post.isActive();
         post.deleteByAuthor();
+        attachments.deleteForPost(postId);
         if (wasActive && post.isRepost()) {
             posts.adjustReposts(post.getRepostOfId(), -1);
         }
@@ -167,6 +183,23 @@ public class PostService {
     public PostView unbookmark(UUID userId, UUID postId) {
         bookmarks.findById(new UserPostKey(userId, postId)).ifPresent(bookmarks::delete);
         return get(userId, postId);
+    }
+
+    /** Bytes of an attachment of a post the viewer may see (own posts included). */
+    @Transactional(readOnly = true)
+    public PostAttachmentService.AttachmentContent attachment(UUID viewerId, UUID postId, UUID attachmentId) {
+        Post post = visible(viewerId, postId);
+        if (!post.isActive() && !post.getAuthorId().equals(viewerId)) {
+            throw PostAttachmentService.notFound();
+        }
+        return attachments.load(postId, attachmentId);
+    }
+
+    /** Moderators may open attachments of any post, including removed ones, when handling reports. */
+    @Transactional(readOnly = true)
+    public PostAttachmentService.AttachmentContent moderatorAttachment(UUID postId, UUID attachmentId) {
+        posts.findById(postId).orElseThrow(PostService::postNotFound);
+        return attachments.load(postId, attachmentId);
     }
 
     @Transactional(readOnly = true)

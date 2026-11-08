@@ -25,30 +25,31 @@ export function Feed() {
   const { data, isPending, isError, error } = useFeed({ intent, tag, q, page, size: 20 });
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold">Community feed</h1>
-        <p className="mt-1 text-muted-foreground">Technical discussion, achievements, events and opportunities from verified members.</p>
-      </div>
+    <div className="space-y-4">
+      <h1 className="sr-only">Community feed</h1>
       <PostComposer />
 
-      <div className="space-y-3">
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setQ(draftQuery.trim() || undefined);
-            setPage(0);
-          }}
-        >
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" aria-hidden="true" />
-            <Input aria-label="Search posts" placeholder="Search posts" className="pl-8" value={draftQuery} onChange={(e) => setDraftQuery(e.target.value)} />
-          </div>
-          <Button type="submit" variant="outline">Search</Button>
-        </form>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by intent">
-          <FilterChip active={!intent} onClick={() => { setIntent(undefined); setPage(0); }}>All</FilterChip>
+      <div className="space-y-2">
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" aria-hidden="true" />
+          <form
+            className="flex w-full max-w-sm items-center"
+            role="search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setQ(draftQuery.trim() || undefined);
+              setPage(0);
+            }}
+          >
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input aria-label="Search posts" placeholder="Search posts" className="h-9 rounded-full bg-card pl-9" value={draftQuery} onChange={(e) => setDraftQuery(e.target.value)} />
+            </div>
+            <Button type="submit" variant="ghost" size="sm" className="sr-only">Search</Button>
+          </form>
+        </div>
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" role="group" aria-label="Filter by post type">
+          <FilterChip active={!intent} onClick={() => { setIntent(undefined); setPage(0); }}>All posts</FilterChip>
           {INTENTS.map((i) => (
             <FilterChip key={i} active={intent === i} onClick={() => { setIntent(intent === i ? undefined : i); setPage(0); }}>
               {INTENT_LABELS[i]}
@@ -57,14 +58,15 @@ export function Feed() {
         </div>
         {tag || q ? (
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>Showing</span>
             {tag ? (
-              <Link href="/home" className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 hover:bg-accent">
-                #{tag} <X className="size-3" aria-hidden="true" />
+              <Link href="/home" className="inline-flex items-center gap-1 rounded-full border bg-card px-2.5 py-0.5 font-medium text-primary hover:bg-accent">
+                #{tag} <X className="size-3" aria-label="Clear hashtag filter" />
               </Link>
             ) : null}
             {q ? (
-              <button type="button" className="inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 hover:bg-accent" onClick={() => { setQ(undefined); setDraftQuery(""); setPage(0); }}>
-                “{q}” <X className="size-3" aria-hidden="true" />
+              <button type="button" className="inline-flex items-center gap-1 rounded-full border bg-card px-2.5 py-0.5 font-medium hover:bg-accent" onClick={() => { setQ(undefined); setDraftQuery(""); setPage(0); }}>
+                “{q}” <X className="size-3" aria-label="Clear search" />
               </button>
             ) : null}
           </div>
@@ -72,7 +74,17 @@ export function Feed() {
       </div>
 
       {isPending ? (
-        <div className="space-y-4">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}</div>
+        <div className="space-y-4" aria-busy="true" aria-label="Loading posts">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-3 rounded-xl border bg-card p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-10 rounded-full" />
+                <div className="flex-1 space-y-1.5"><Skeleton className="h-3.5 w-40" /><Skeleton className="h-3 w-24" /></div>
+              </div>
+              <Skeleton className="h-3.5 w-full" /><Skeleton className="h-3.5 w-4/5" /><Skeleton className="h-48 w-full" />
+            </div>
+          ))}
+        </div>
       ) : isError ? (
         <FormError error={error} title="Could not load the feed" />
       ) : data.content.length === 0 ? (
@@ -94,8 +106,8 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        active ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent",
+        "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+        active ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-accent",
       )}
     >
       {children}

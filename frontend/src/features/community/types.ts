@@ -15,6 +15,32 @@ export type ReportReason = "SPAM" | "HARASSMENT" | "INAPPROPRIATE" | "MISINFORMA
 export type ReportStatus = "OPEN" | "RESOLVED" | "DISMISSED";
 export type ReportResolution = "CONTENT_REMOVED" | "NO_ACTION" | "DISMISSED";
 
+export type AttachmentKind = "IMAGE" | "FILE";
+
+/** A photo or document on a post. `url` is a same-origin backend path; null while the upload is not posted yet. */
+export interface AttachmentView {
+  id: string;
+  kind: AttachmentKind;
+  contentType: string;
+  sizeBytes: number;
+  filename: string | null;
+  width: number | null;
+  height: number | null;
+  url: string | null;
+}
+
+export const MAX_PHOTOS_PER_POST = 4;
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+export const PHOTO_ACCEPT = "image/jpeg,image/png";
+export const DOCUMENT_ACCEPT =
+  ".pdf,.docx,.pptx,.xlsx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export interface PostView {
   id: string;
   author: MemberCard | null;
@@ -22,6 +48,7 @@ export interface PostView {
   body: string;
   visibility: PostVisibility;
   hashtags: string[];
+  attachments: AttachmentView[];
   likeCount: number;
   commentCount: number;
   repostCount: number;
@@ -88,6 +115,7 @@ export interface CreatePostRequest {
   body: string;
   visibility: PostVisibility;
   repostOfId?: string;
+  attachmentIds?: string[];
 }
 
 export const INTENT_LABELS: Record<PostIntent, string> = {

@@ -8,6 +8,7 @@
 | CSRF | Cookie + header double submit on every non-GET and on WebSocket CONNECT | Done, tested (`WebSocketIT`) |
 | Authorization | Server-side account-status filter + fine-grained authorities, ownership/membership checks on every endpoint, uniform 404s | Done, tested (`AuthorizationMatrixIT` + module ITs) |
 | Input | Bean Validation, plain-text sanitisation, size limits, magic-byte upload checks, image re-encode, PDF active-content rejection | Done, tested |
+| Post attachments | content sniffing (declared type ignored), photo re-encode without metadata, OOXML without macros, malware scan, visibility-checked streaming with `nosniff`, `sandbox` CSP and download disposition for documents (`PostAttachmentIT`) | Done, tested |
 | Documents | AES-256-GCM, private bucket, backend streaming only, per-view audit, retention purge, real collection behind a feature flag | Done, tested |
 | Malware | ClamAV mandatory in production (fail closed), opt-in `ClamAvEicarIT` | Done |
 | Transport | TLS 1.2/1.3 at nginx, HSTS, HTTP→HTTPS redirect | Config ready (`prod.conf`) |

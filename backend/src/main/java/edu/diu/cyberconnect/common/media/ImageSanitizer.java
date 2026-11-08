@@ -74,6 +74,35 @@ public final class ImageSanitizer {
         return write(target, "jpeg");
     }
 
+    /** A re-encoded JPEG with its final pixel size. */
+    public record Fitted(byte[] bytes, int width, int height) {
+    }
+
+    /**
+     * Re-encodes as JPEG (metadata dropped, transparency flattened on white), scaled down so the longer edge is at most
+     * {@code maxEdge} pixels; smaller images keep their size. Used for photos attached to posts.
+     */
+    public static Fitted fitJpeg(byte[] original, int maxEdge) {
+        BufferedImage source = decode(original);
+        int w = source.getWidth();
+        int h = source.getHeight();
+        double scale = Math.min(1.0, (double) maxEdge / Math.max(w, h));
+        int tw = Math.max(1, (int) Math.round(w * scale));
+        int th = Math.max(1, (int) Math.round(h * scale));
+        BufferedImage target = new BufferedImage(tw, th, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = target.createGraphics();
+        try {
+            g.setColor(Color.WHITE);
+            g.fillRect(0, 0, tw, th);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            g.drawImage(source, 0, 0, tw, th, null);
+        } finally {
+            g.dispose();
+        }
+        return new Fitted(write(target, "jpeg"), tw, th);
+    }
+
     private static BufferedImage decode(byte[] original) {
         try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(original))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(input);

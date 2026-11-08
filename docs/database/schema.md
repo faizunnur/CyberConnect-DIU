@@ -83,4 +83,9 @@ impact-confirmation tables append-only.
 | `impact_records` | confirmed outcomes (D-12) | `impact_type` JOB_REFERRAL/RESEARCH/MENTORSHIP with a CHECK that exactly the matching source column is set (`application_id`, `research_project_id`, `mentorship_request_id`); beneficiary ≠ contributor; `proposed_by` must be a party; status PENDING_CONFIRMATION/CONFIRMED/DISPUTED/REJECTED; per-side confirmation timestamps, dispute and resolution columns; **partial unique index on (source, beneficiary, contributor) for non-rejected rows** |
 | `impact_confirmations` | decision trail | PROPOSE/CONFIRM/DISPUTE/WITHDRAW/RESOLVE_CONFIRMED/RESOLVE_REJECTED with role BENEFICIARY/CONTRIBUTOR/MODERATOR; **append-only** |
 
+## V008 — post attachments (7 Nov 2026)
+| Table | Purpose | Notes |
+|---|---|---|
+| `post_attachments` | photos and documents on posts (D-47) | `owner_id` → users (cascade), `post_id` → posts (cascade, NULL while unclaimed), `kind` IMAGE/FILE, unique `storage_key` in the media bucket, `content_type`, `size_bytes`, cleaned `original_filename`, image `width`/`height`, `position` 0–9; partial indexes for a post's attachments and for unclaimed uploads by owner and age |
+
 All planned tables now exist; later milestones add columns through new migrations only.

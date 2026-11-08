@@ -32,15 +32,18 @@ public class PostAssembler {
     private final HashtagRepository hashtags;
     private final FeedQueryRepository feedQuery;
     private final ProfileService profiles;
+    private final PostAttachmentService attachments;
 
     public PostAssembler(PostRepository posts, PostLikeRepository likes, BookmarkRepository bookmarks,
-            HashtagRepository hashtags, FeedQueryRepository feedQuery, ProfileService profiles) {
+            HashtagRepository hashtags, FeedQueryRepository feedQuery, ProfileService profiles,
+            PostAttachmentService attachments) {
         this.posts = posts;
         this.likes = likes;
         this.bookmarks = bookmarks;
         this.hashtags = hashtags;
         this.feedQuery = feedQuery;
         this.profiles = profiles;
+        this.attachments = attachments;
     }
 
     /** @param moderator when true, removal reasons are included for every post */
@@ -71,8 +74,9 @@ public class PostAssembler {
         for (Object[] row : hashtags.tagsForPosts(postIds)) {
             tags.computeIfAbsent((UUID) row[0], k -> new ArrayList<>()).add((String) row[1]);
         }
+        Map<UUID, List<AttachmentView>> files = attachments.forPosts(postIds, moderator);
 
-        Function<Post, PostView> toView = p -> view(viewerId, p, authors, liked, bookmarked, tags, null, false, moderator);
+        Function<Post, PostView> toView = p -> view(viewerId, p, authors, liked, bookmarked, tags, files, null, false, moderator);
         List<PostView> result = new ArrayList<>(batch.size());
         for (Post post : batch) {
             PostView original = null;
@@ -85,7 +89,7 @@ public class PostAssembler {
                     original = toView.apply(o);
                 }
             }
-            result.add(view(viewerId, post, authors, liked, bookmarked, tags, original, unavailable, moderator));
+            result.add(view(viewerId, post, authors, liked, bookmarked, tags, files, original, unavailable, moderator));
         }
         return result;
     }
@@ -116,13 +120,22 @@ public class PostAssembler {
                 c.getCreatedAt(), c.getEditedAt());
     }
 
-    private static PostView view(UUID viewerId, Post p, Map<UUID, MemberCard> authors, Set<UUID> liked,
-            Set<UUID> bookmarked, Map<UUID, List<String>> tags, PostView original, boolean unavailable,
+    /** Removed or deleted posts show their attachments only to the author and moderators, like the body. */
+    private static List<AttachmentView> visibleAttachments(Post p, Map<UUID, List<AttachmentView>> files, boolean own,
             boolean moderator) {
+        if (p.getStatus() != ContentStatus.ACTIVE && !own && !moderator) {
+            return List.of();
+        }
+        return files.getOrDefault(p.getId(), List.of());
+    }
+
+    private static PostView view(UUID viewerId, Post p, Map<UUID, MemberCard> authors, Set<UUID> liked,
+            Set<UUID> bookmarked, Map<UUID, List<String>> tags, Map<UUID, List<AttachmentView>> files, PostView original,
+            boolean unavailable, boolean moderator) {
         boolean own = p.getAuthorId().equals(viewerId);
         String removedReason = (own || moderator) && p.getStatus() == ContentStatus.REMOVED ? p.getRemovedReason() : null;
         return new PostView(p.getId(), authors.get(p.getAuthorId()), p.getIntent(), p.getBody(), p.getVisibility(),
-                tags.getOrDefault(p.getId(), List.of()), p.getLikeCount(), p.getCommentCount(), p.getRepostCount(),
+                tags.getOrDefault(p.getId(), List.of()), visibleAttachments(p, files, own, moderator), p.getLikeCount(), p.getCommentCount(), p.getRepostCount(),
                 liked.contains(p.getId()), bookmarked.contains(p.getId()), own, p.getStatus(), removedReason,
                 original, unavailable, p.getCreatedAt(), p.getEditedAt());
     }
