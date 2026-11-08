@@ -167,7 +167,7 @@ class OpportunityIT extends AbstractIntegrationTest {
         api.assertStatus(api.get("/api/v1/opportunities/" + draftId, v), 404);
         assertThat(ids(api.body(api.get("/api/v1/opportunities", v)))).doesNotContain(draftId);
         Map<String, Object> past = opportunity("Past");
-        past.put("deadline", LocalDate.now().minusDays(1).toString());
+        past.put("deadline", LocalDate.now(java.time.ZoneId.of("Asia/Dhaka")).minusDays(1).toString());
         MvcResult pastDeadline = api.post("/api/v1/opportunities", past, a);
         api.assertStatus(pastDeadline, 400);
         assertThat(api.code(pastDeadline)).isEqualTo("DEADLINE_PASSED");
@@ -176,7 +176,7 @@ class OpportunityIT extends AbstractIntegrationTest {
 
         // Expiry: a published opportunity whose deadline passes expires via the job.
         Map<String, Object> expiring = opportunity("Expiring");
-        expiring.put("deadline", LocalDate.now().plusDays(1).toString());
+        expiring.put("deadline", LocalDate.now(java.time.ZoneId.of("Asia/Dhaka")).plusDays(1).toString());
         String expiringId = api.body(api.post("/api/v1/opportunities", expiring, a)).get("id").asString();
         jdbc.update("update opportunities set deadline = current_date - 1 where id = ?::uuid", java.util.UUID.fromString(expiringId));
         assertThat(ids(api.body(api.get("/api/v1/opportunities", v)))).as("deadline filter hides overdue listings").doesNotContain(expiringId);

@@ -112,6 +112,8 @@ app:
   name: CyberConnect DIU
   base-url: ${APP_BASE_URL:http://localhost:3000}
   environment: ${APP_ENV:local}
+  # Calendar rules (deadlines, daily jobs) use this zone; timestamps are stored and exchanged in UTC.
+  time-zone: ${APP_TIME_ZONE:Asia/Dhaka}
   mail-from: ${MAIL_FROM:no-reply@cyberconnect.local}
   bootstrap:
     # First account registering with this email becomes SUPER_ADMIN (while no SUPER_ADMIN exists). Clear afterwards.

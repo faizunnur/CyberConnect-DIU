@@ -106,6 +106,8 @@ instructions. Precedence: owner instructions → assessment decisions → propos
   uploads are deleted after 24 hours. Reposts carry no attachments of their own.
 - D-49 Mail delivery never fails the action that triggered it: a relay error or a rejected recipient is logged
   (recipient domain only) and the member can request the verification email again.
+- D-50 Calendar rules use the institution's time zone (`APP_TIME_ZONE`, default Asia/Dhaka): an opportunity deadline
+  ends at midnight Dhaka time and the daily expiry, retention and purge jobs run on Dhaka time. Timestamps remain UTC.
 
 ## Modules
 1. Identity & onboarding: register, login, logout, email verification, password reset, sessions, MFA (TOTP + recovery

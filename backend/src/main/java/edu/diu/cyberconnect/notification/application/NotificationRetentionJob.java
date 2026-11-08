@@ -23,7 +23,7 @@ public class NotificationRetentionJob {
         this.notifications = notifications;
     }
 
-    @Scheduled(cron = "0 45 3 * * *")
+    @Scheduled(cron = "0 45 3 * * *", zone = "${app.time-zone:Asia/Dhaka}")
     @Transactional
     public int purge() {
         Instant now = Instant.now();

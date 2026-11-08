@@ -235,7 +235,7 @@ public class OpportunityService {
     }
 
     /** Opportunities past their deadline expire; runs nightly and can be triggered by tests. */
-    @Scheduled(cron = "0 15 0 * * *")
+    @Scheduled(cron = "0 15 0 * * *", zone = "${app.time-zone:Asia/Dhaka}")
     public int expireOverdue() {
         List<Opportunity> overdue = opportunities.findByStatusAndDeadlineBefore(OpportunityStatus.OPEN, LocalDate.now(clock));
         overdue.forEach(Opportunity::expire);

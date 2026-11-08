@@ -52,7 +52,7 @@ public class RetentionPurgeJob {
         this.audit = audit;
     }
 
-    @Scheduled(cron = "0 30 3 * * *")
+    @Scheduled(cron = "0 30 3 * * *", zone = "${app.time-zone:Asia/Dhaka}")
     public void runScheduled() {
         int purged = purgeExpired(Instant.now());
         if (purged > 0) {
