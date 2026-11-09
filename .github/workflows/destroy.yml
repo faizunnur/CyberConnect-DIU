@@ -1,0 +1,60 @@
+name: Destroy CyberConnect-DIU
+run-name: Destroy (${{ inputs.udap_run_id }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Git revision'
+        required: false
+        default: ''
+      udap_run_id:
+        description: 'UDAP run identifier'
+        required: false
+        default: ''
+
+concurrency:
+  group: ${{ vars.TF_STATE_KEY || 'cyberconnect-deploy' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.10.0'
+
+      - name: Terraform Init
+        working-directory: infra
+        run: |
+          terraform init -input=false -reconfigure \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
+
+      - name: Terraform Destroy
+        working-directory: infra
+        env:
+          TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+          TF_VAR_image_tag: latest
+          TF_VAR_db_password: ${{ secrets.POSTGRES_PASSWORD }}
+          TF_VAR_jwt_secret: ${{ secrets.JWT_SECRET }}
+        run: terraform destroy -input=false -auto-approve
